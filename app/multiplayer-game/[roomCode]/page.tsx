@@ -179,7 +179,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
 
   const handleContinue = () => {
     // Update round statistics
-    let newStats = { ...roundStats, totalRounds: roundStats.totalRounds + 1 };
+    const newStats = { ...roundStats, totalRounds: roundStats.totalRounds + 1 };
 
     if (gameState.winner === "X") {
       newStats.player1Wins += 1;
