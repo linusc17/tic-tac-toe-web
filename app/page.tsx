@@ -1,12 +1,23 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { HomePage } from "@/src/components/HomePage";
 
 export default function Home() {
+  const router = useRouter();
+
   const handleStartNewGame = () => {
-    // TODO: Navigate to new game page
-    console.log("Start new game clicked");
+    router.push("/new-game");
   };
 
-  return <HomePage onStartNewGame={handleStartNewGame} />;
+  const handleStartMultiplayer = () => {
+    router.push("/multiplayer");
+  };
+
+  return (
+    <HomePage
+      onStartNewGame={handleStartNewGame}
+      onStartMultiplayer={handleStartMultiplayer}
+    />
+  );
 }

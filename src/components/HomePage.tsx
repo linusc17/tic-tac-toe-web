@@ -9,9 +9,13 @@ import { Gamepad2, Play, Loader2 } from "lucide-react";
 
 interface HomePageProps {
   onStartNewGame: () => void;
+  onStartMultiplayer: () => void;
 }
 
-export function HomePage({ onStartNewGame }: HomePageProps) {
+export function HomePage({
+  onStartNewGame,
+  onStartMultiplayer,
+}: HomePageProps) {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,14 +60,23 @@ export function HomePage({ onStartNewGame }: HomePageProps) {
           <ThemeToggle />
         </div>
 
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 space-y-4">
           <Button
             onClick={onStartNewGame}
             size="lg"
-            className="px-8 py-4 text-xl font-semibold gap-2"
+            className="px-8 py-4 text-xl font-semibold gap-2 mr-4"
           >
             <Play className="h-6 w-6" />
-            Start New Game
+            Single Player Game
+          </Button>
+          <Button
+            onClick={onStartMultiplayer}
+            size="lg"
+            variant="outline"
+            className="px-8 py-4 text-xl font-semibold gap-2"
+          >
+            <Gamepad2 className="h-6 w-6" />
+            Multiplayer Game
           </Button>
         </div>
 
