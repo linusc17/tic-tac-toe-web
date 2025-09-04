@@ -52,6 +52,13 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [connectionError, setConnectionError] = useState("");
+  const [showRoundEnd, setShowRoundEnd] = useState(false);
+  const [roundStats, setRoundStats] = useState({
+    player1Wins: 0,
+    player2Wins: 0,
+    draws: 0,
+    totalRounds: 0,
+  });
 
   useEffect(() => {
     const newSocket = io(
@@ -65,28 +72,18 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       setIsConnected(true);
       setConnectionError("");
 
-      if (playerSymbol === "X") {
-        newSocket.emit(
-          "create_room",
-          decodeURIComponent(playerName),
-          (response: { success: boolean; error?: string }) => {
-            if (!response.success) {
-              setConnectionError("Failed to create room");
-            }
+      // Join the existing room (don't create a new one)
+      newSocket.emit(
+        "join_existing_room",
+        roomCode,
+        decodeURIComponent(playerName),
+        playerSymbol,
+        (response: { success: boolean; error?: string }) => {
+          if (!response.success) {
+            setConnectionError(response.error || "Failed to join room");
           }
-        );
-      } else {
-        newSocket.emit(
-          "join_room",
-          roomCode,
-          decodeURIComponent(playerName),
-          (response: { success: boolean; error?: string }) => {
-            if (!response.success) {
-              setConnectionError(response.error || "Failed to join room");
-            }
-          }
-        );
-      }
+        }
+      );
     });
 
     newSocket.on("connect_error", () => {
@@ -111,12 +108,20 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       "move_made",
       (data: { position: number; player: string; gameState: GameState }) => {
         setGameState(data.gameState);
+        if (data.gameState.winner || data.gameState.isDraw) {
+          setShowRoundEnd(true);
+        }
       }
     );
 
     newSocket.on("player_disconnected", () => {
       setConnectionError("Other player disconnected");
       setIsConnected(false);
+    });
+
+    newSocket.on("new_round_started", (data: { gameState: GameState }) => {
+      setGameState(data.gameState);
+      setShowRoundEnd(false);
     });
 
     setSocket(newSocket);
@@ -171,6 +176,40 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
   };
 
   const isMyTurn = () => gameState.currentTurn === playerSymbol;
+
+  const handleContinue = () => {
+    // Update round statistics
+    let newStats = { ...roundStats, totalRounds: roundStats.totalRounds + 1 };
+
+    if (gameState.winner === "X") {
+      newStats.player1Wins += 1;
+    } else if (gameState.winner === "O") {
+      newStats.player2Wins += 1;
+    } else if (gameState.isDraw) {
+      newStats.draws += 1;
+    }
+
+    setRoundStats(newStats);
+
+    // Reset game state for new round
+    setGameState({
+      board: Array(9).fill(null),
+      currentTurn: "X",
+      winner: null,
+      isDraw: false,
+      isActive: true,
+    });
+    setShowRoundEnd(false);
+
+    // Emit new round to server
+    if (socket) {
+      socket.emit("new_round", roomCode);
+    }
+  };
+
+  const handleStop = () => {
+    router.push("/");
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -234,6 +273,41 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
                     <p className="text-lg font-semibold">{getOpponentName()}</p>
                   </div>
                 </div>
+
+                {roundStats.totalRounds > 0 && (
+                  <div className="grid grid-cols-4 gap-2 text-center border-t pt-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Your Wins</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {playerSymbol === "X"
+                          ? roundStats.player1Wins
+                          : roundStats.player2Wins}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Opponent Wins
+                      </p>
+                      <p className="text-lg font-bold text-blue-600">
+                        {playerSymbol === "X"
+                          ? roundStats.player2Wins
+                          : roundStats.player1Wins}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Draws</p>
+                      <p className="text-lg font-bold text-muted-foreground">
+                        {roundStats.draws}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Rounds</p>
+                      <p className="text-lg font-bold">
+                        {roundStats.totalRounds}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -315,11 +389,17 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
                   ))}
                 </div>
 
-                {(gameState.winner || gameState.isDraw) && (
-                  <div className="text-center">
-                    <Button onClick={() => router.push("/")} size="lg">
-                      Back to Home
-                    </Button>
+                {showRoundEnd && (
+                  <div className="text-center space-y-4 p-6 bg-secondary/50 rounded-lg">
+                    <p className="text-lg font-medium">Round Complete!</p>
+                    <div className="flex gap-4 justify-center">
+                      <Button onClick={handleContinue} size="lg">
+                        Continue Playing
+                      </Button>
+                      <Button onClick={handleStop} variant="outline" size="lg">
+                        Back to Home
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>

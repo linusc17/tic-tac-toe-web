@@ -34,21 +34,29 @@ export default function MultiplayerPage() {
     const socket = connectSocket();
 
     socket.on("connect", () => {
-      socket.emit("create_room", playerName.trim(), (response: { success: boolean; roomCode?: string; playerSymbol?: string; error?: string }) => {
-        if (response.success) {
-          router.push(
-            `/multiplayer-game/${response.roomCode}?socket=${
-              socket.id
-            }&symbol=${response.playerSymbol}&name=${encodeURIComponent(
-              playerName
-            )}`
-          );
-        } else {
-          setError("Failed to create room");
-          setIsConnecting(false);
-          socket.disconnect();
+      socket.emit(
+        "create_room",
+        playerName.trim(),
+        (response: {
+          success: boolean;
+          roomCode?: string;
+          playerSymbol?: string;
+          error?: string;
+        }) => {
+          if (response.success) {
+            // Don't disconnect socket, let the game page handle it
+            router.push(
+              `/multiplayer-game/${response.roomCode}?symbol=${
+                response.playerSymbol
+              }&name=${encodeURIComponent(playerName)}`
+            );
+          } else {
+            setError("Failed to create room");
+            setIsConnecting(false);
+            socket.disconnect();
+          }
         }
-      });
+      );
     });
 
     socket.on("connect_error", () => {
@@ -78,14 +86,18 @@ export default function MultiplayerPage() {
         "join_room",
         roomCode.trim().toUpperCase(),
         playerName.trim(),
-        (response: { success: boolean; roomCode?: string; playerSymbol?: string; error?: string }) => {
+        (response: {
+          success: boolean;
+          roomCode?: string;
+          playerSymbol?: string;
+          error?: string;
+        }) => {
           if (response.success) {
+            // Don't disconnect socket, let the game page handle it
             router.push(
-              `/multiplayer-game/${response.roomCode}?socket=${
-                socket.id
-              }&symbol=${response.playerSymbol}&name=${encodeURIComponent(
-                playerName
-              )}`
+              `/multiplayer-game/${response.roomCode}?symbol=${
+                response.playerSymbol
+              }&name=${encodeURIComponent(playerName)}`
             );
           } else {
             setError(response.error || "Failed to join room");
