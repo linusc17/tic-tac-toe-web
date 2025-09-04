@@ -62,7 +62,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
         newSocket.emit(
           "create_room",
           decodeURIComponent(playerName),
-          (response: any) => {
+          (response: { success: boolean; error?: string }) => {
             if (!response.success) {
               setConnectionError("Failed to create room");
             }
@@ -73,7 +73,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
           "join_room",
           roomCode,
           decodeURIComponent(playerName),
-          (response: any) => {
+          (response: { success: boolean; error?: string }) => {
             if (!response.success) {
               setConnectionError(response.error || "Failed to join room");
             }
@@ -130,7 +130,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       return;
     }
 
-    socket.emit("make_move", roomCode, index, (response: any) => {
+    socket.emit("make_move", roomCode, index, (response: { success: boolean; error?: string }) => {
       if (!response.success) {
         console.error("Move failed:", response.error);
       }
@@ -264,7 +264,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
                       <p className="text-xl font-semibold">
                         {isMyTurn()
                           ? "Your Turn"
-                          : `${getCurrentTurnName()}'s Turn`}
+                          : `${getCurrentTurnName()}&apos;s Turn`}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {isMyTurn()

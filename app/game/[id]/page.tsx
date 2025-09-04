@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +24,7 @@ export default function GamePage({ params }: GamePageProps) {
   const [loading, setLoading] = useState(true);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
 
-  useEffect(() => {
-    fetchGameSession();
-  }, [id]);
-
-  const fetchGameSession = async () => {
+  const fetchGameSession = useCallback(async () => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/games/${id}`
@@ -44,7 +40,11 @@ export default function GamePage({ params }: GamePageProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]);
+
+  useEffect(() => {
+    fetchGameSession();
+  }, [fetchGameSession]);
 
   const checkWinner = (board: (string | null)[]) => {
     const lines = [
@@ -250,8 +250,8 @@ export default function GamePage({ params }: GamePageProps) {
                     </p>
                   ) : (
                     <p className="text-xl font-semibold">
-                      {getCurrentPlayerName()}'s Turn ({gameState.currentPlayer}
-                      )
+                      {getCurrentPlayerName()}&apos;s Turn (
+                      {gameState.currentPlayer})
                     </p>
                   )}
                 </div>

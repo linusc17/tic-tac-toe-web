@@ -34,7 +34,7 @@ export default function MultiplayerPage() {
     const socket = connectSocket();
 
     socket.on("connect", () => {
-      socket.emit("create_room", playerName.trim(), (response: any) => {
+      socket.emit("create_room", playerName.trim(), (response: { success: boolean; roomCode?: string; playerSymbol?: string; error?: string }) => {
         if (response.success) {
           router.push(
             `/multiplayer-game/${response.roomCode}?socket=${
@@ -78,7 +78,7 @@ export default function MultiplayerPage() {
         "join_room",
         roomCode.trim().toUpperCase(),
         playerName.trim(),
-        (response: any) => {
+        (response: { success: boolean; roomCode?: string; playerSymbol?: string; error?: string }) => {
           if (response.success) {
             router.push(
               `/multiplayer-game/${response.roomCode}?socket=${
