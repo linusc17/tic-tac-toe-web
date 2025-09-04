@@ -4,7 +4,7 @@ import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, Trophy, HandHeart } from "lucide-react";
 import { GameSession, GameState } from "@/src/types/game";
 
 interface GamePageProps {
@@ -35,7 +35,7 @@ export default function GamePage({ params }: GamePageProps) {
       } else {
         router.push("/");
       }
-    } catch (error) {
+    } catch {
       router.push("/");
     } finally {
       setLoading(false);
@@ -241,12 +241,14 @@ export default function GamePage({ params }: GamePageProps) {
               <div className="flex justify-between items-center">
                 <div>
                   {gameState.winner ? (
-                    <p className="text-xl font-semibold text-green-600">
-                      🎉 {getWinnerName()} Wins!
+                    <p className="text-xl font-semibold text-green-600 flex items-center justify-center gap-2">
+                      <Trophy className="h-6 w-6" />
+                      {getWinnerName()} Wins!
                     </p>
                   ) : gameState.isDraw ? (
-                    <p className="text-xl font-semibold text-yellow-600">
-                      🤝 It's a Draw!
+                    <p className="text-xl font-semibold text-yellow-600 flex items-center justify-center gap-2">
+                      <HandHeart className="h-6 w-6" />
+                      It&apos;s a Draw!
                     </p>
                   ) : (
                     <p className="text-xl font-semibold">

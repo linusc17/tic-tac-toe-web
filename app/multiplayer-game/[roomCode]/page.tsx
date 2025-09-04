@@ -4,7 +4,14 @@ import { useState, useEffect, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Copy, Wifi, WifiOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  Wifi,
+  WifiOff,
+  Trophy,
+  HandHeart,
+} from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
 interface MultiplayerGameProps {
@@ -130,11 +137,16 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       return;
     }
 
-    socket.emit("make_move", roomCode, index, (response: { success: boolean; error?: string }) => {
-      if (!response.success) {
-        console.error("Move failed:", response.error);
+    socket.emit(
+      "make_move",
+      roomCode,
+      index,
+      (response: { success: boolean; error?: string }) => {
+        if (!response.success) {
+          console.error("Move failed:", response.error);
+        }
       }
-    });
+    );
   };
 
   const copyRoomCode = () => {
@@ -252,12 +264,14 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
               <CardHeader>
                 <div className="text-center">
                   {gameState.winner ? (
-                    <p className="text-xl font-semibold text-green-600">
-                      🎉 {getWinnerName()} Wins!
+                    <p className="text-xl font-semibold text-green-600 flex items-center justify-center gap-2">
+                      <Trophy className="h-6 w-6" />
+                      {getWinnerName()} Wins!
                     </p>
                   ) : gameState.isDraw ? (
-                    <p className="text-xl font-semibold text-yellow-600">
-                      🤝 It's a Draw!
+                    <p className="text-xl font-semibold text-yellow-600 flex items-center justify-center gap-2">
+                      <HandHeart className="h-6 w-6" />
+                      It&apos;s a Draw!
                     </p>
                   ) : (
                     <div>
