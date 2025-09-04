@@ -67,7 +67,7 @@ export function HomePage({
             className="px-8 py-4 text-xl font-semibold gap-2 mr-4"
           >
             <Play className="h-6 w-6" />
-            Single Player Game
+            Local Game
           </Button>
           <Button
             onClick={onStartMultiplayer}

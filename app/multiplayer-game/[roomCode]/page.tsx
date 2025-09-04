@@ -13,6 +13,8 @@ import {
   HandHeart,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
+import FloatingChat from "@/components/FloatingChat";
+import { ChatMessage } from "@/src/types/chat";
 
 interface MultiplayerGameProps {
   params: Promise<{ roomCode: string }>;
@@ -59,6 +61,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
     draws: 0,
     totalRounds: 0,
   });
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     const newSocket = io(
@@ -205,6 +208,10 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
 
   const handleStop = () => {
     router.push("/");
+  };
+
+  const handleNewChatMessage = (message: ChatMessage) => {
+    setChatMessages((prev) => [...prev, message]);
   };
 
   return (
@@ -401,6 +408,14 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
               </CardContent>
             </Card>
           )}
+          <FloatingChat
+            socket={socket}
+            roomCode={roomCode}
+            playerName={playerName}
+            isVisible={!waitingForPlayer}
+            chatMessages={chatMessages}
+            onNewMessage={handleNewChatMessage}
+          />
         </div>
       </div>
     </div>
