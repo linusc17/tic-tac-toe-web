@@ -72,7 +72,6 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       setIsConnected(true);
       setConnectionError("");
 
-      // Join the existing room (don't create a new one)
       newSocket.emit(
         "join_existing_room",
         roomCode,
@@ -178,7 +177,6 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
   const isMyTurn = () => gameState.currentTurn === playerSymbol;
 
   const handleContinue = () => {
-    // Update round statistics
     const newStats = { ...roundStats, totalRounds: roundStats.totalRounds + 1 };
 
     if (gameState.winner === "X") {
@@ -191,7 +189,6 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
 
     setRoundStats(newStats);
 
-    // Reset game state for new round
     setGameState({
       board: Array(9).fill(null),
       currentTurn: "X",
@@ -201,7 +198,6 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
     });
     setShowRoundEnd(false);
 
-    // Emit new round to server
     if (socket) {
       socket.emit("new_round", roomCode);
     }
@@ -352,7 +348,7 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
                       <p className="text-xl font-semibold">
                         {isMyTurn()
                           ? "Your Turn"
-                          : `${getCurrentTurnName()}&apos;s Turn`}
+                          : `${getCurrentTurnName()}'s Turn`}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {isMyTurn()
