@@ -10,14 +10,14 @@ export default function Home() {
     router.push("/new-game");
   };
 
-  const handleStartMultiplayer = () => {
-    router.push("/multiplayer");
+  const handleStartOnline = () => {
+    router.push("/online");
   };
 
   return (
     <HomePage
       onStartNewGame={handleStartNewGame}
-      onStartMultiplayer={handleStartMultiplayer}
+      onStartOnline={handleStartOnline}
     />
   );
 }

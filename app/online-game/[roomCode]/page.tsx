@@ -16,7 +16,7 @@ import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
 import { ChatMessage } from "@/src/types/chat";
 
-interface MultiplayerGameProps {
+interface OnlineGameProps {
   params: Promise<{ roomCode: string }>;
 }
 
@@ -34,7 +34,7 @@ interface Player {
   symbol: string;
 }
 
-export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
+export default function OnlineGamePage({ params }: OnlineGameProps) {
   const { roomCode } = use(params);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -219,18 +219,18 @@ export default function MultiplayerGamePage({ params }: MultiplayerGameProps) {
       <div className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"
-          onClick={() => router.push("/multiplayer")}
+          onClick={() => router.push("/online")}
           className="mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Multiplayer
+          Back to Online
         </Button>
 
         <div className="max-w-2xl mx-auto">
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="text-2xl text-center">
-                Multiplayer Game
+                Online Game
               </CardTitle>
             </CardHeader>
             <CardContent>

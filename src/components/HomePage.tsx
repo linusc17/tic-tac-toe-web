@@ -9,12 +9,12 @@ import { Gamepad2, Play, Loader2 } from "lucide-react";
 
 interface HomePageProps {
   onStartNewGame: () => void;
-  onStartMultiplayer: () => void;
+  onStartOnline: () => void;
 }
 
 export function HomePage({
   onStartNewGame,
-  onStartMultiplayer,
+  onStartOnline,
 }: HomePageProps) {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,13 +70,13 @@ export function HomePage({
             Local Game
           </Button>
           <Button
-            onClick={onStartMultiplayer}
+            onClick={onStartOnline}
             size="lg"
             variant="outline"
             className="px-8 py-4 text-xl font-semibold gap-2"
           >
             <Gamepad2 className="h-6 w-6" />
-            Multiplayer Game
+            Online Game
           </Button>
         </div>
 

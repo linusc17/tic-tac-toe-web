@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Users, UserPlus } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
-export default function MultiplayerPage() {
+export default function OnlinePage() {
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
@@ -46,7 +46,7 @@ export default function MultiplayerPage() {
           if (response.success) {
             // Don't disconnect socket, let the game page handle it
             router.push(
-              `/multiplayer-game/${response.roomCode}?symbol=${
+              `/online-game/${response.roomCode}?symbol=${
                 response.playerSymbol
               }&name=${encodeURIComponent(playerName)}`
             );
@@ -95,7 +95,7 @@ export default function MultiplayerPage() {
           if (response.success) {
             // Don't disconnect socket, let the game page handle it
             router.push(
-              `/multiplayer-game/${response.roomCode}?symbol=${
+              `/online-game/${response.roomCode}?symbol=${
                 response.playerSymbol
               }&name=${encodeURIComponent(playerName)}`
             );
@@ -130,7 +130,7 @@ export default function MultiplayerPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl text-center">
-                Multiplayer Setup
+                Online Setup
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -209,7 +209,7 @@ export default function MultiplayerPage() {
             <CardContent className="pt-6">
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  <strong>How to play multiplayer:</strong>
+                  <strong>How to play online:</strong>
                 </p>
                 <p>
                   • <strong>Create Room:</strong> Start a new game and share the
