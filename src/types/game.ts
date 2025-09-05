@@ -2,6 +2,8 @@ export interface GameSession {
   id: string;
   player1Name: string;
   player2Name: string;
+  player1Id?: string;
+  player2Id?: string;
   player1Wins: number;
   player2Wins: number;
   draws: number;

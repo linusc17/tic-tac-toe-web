@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { GameSession } from "@/src/types/game";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gamepad2, Play, Loader2 } from "lucide-react";
+import { Gamepad2, Play, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface HomePageProps {
@@ -54,26 +54,26 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
     <div className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-12 space-y-4 text-center">
-          <div className="relative flex justify-center items-center min-h-[80px]">
+          <div className="relative flex min-h-[80px] items-center justify-center">
             {!showSplitButtons ? (
               <Button
                 onClick={() => setShowSplitButtons(true)}
                 size="lg"
-                className="gap-3 px-16 py-8 text-3xl font-black tracking-wider transition-all duration-500 transform hover:scale-105 shadow-xl font-['Poppins']"
+                className="transform gap-3 px-16 py-8 font-['Poppins'] text-3xl font-black tracking-wider shadow-xl transition-all duration-500 hover:scale-105"
               >
                 <Play className="h-10 w-10" />
                 PLAY
               </Button>
             ) : (
-              <div className="flex gap-6 animate-in fade-in duration-500">
+              <div className="animate-in fade-in flex gap-6 duration-500">
                 <Button
                   onClick={onStartNewGame}
                   size="lg"
-                  className="gap-2 px-8 py-4 text-xl font-bold tracking-wide transition-all duration-300 transform translate-x-0 animate-in slide-in-from-right-20 shadow-lg font-['Poppins']"
+                  className="animate-in slide-in-from-right-20 translate-x-0 transform gap-2 px-8 py-4 font-['Poppins'] text-xl font-bold tracking-wide shadow-lg transition-all duration-300"
                   style={{
-                    animationDelay: '100ms',
-                    animationDuration: '600ms',
-                    animationFillMode: 'both'
+                    animationDelay: "100ms",
+                    animationDuration: "600ms",
+                    animationFillMode: "both",
                   }}
                 >
                   <Play className="h-6 w-6" />
@@ -83,11 +83,11 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
                   onClick={onStartOnline}
                   size="lg"
                   variant="outline"
-                  className="gap-2 px-8 py-4 text-xl font-bold tracking-wide transition-all duration-300 transform translate-x-0 animate-in slide-in-from-left-20 shadow-lg font-['Poppins']"
+                  className="animate-in slide-in-from-left-20 translate-x-0 transform gap-2 px-8 py-4 font-['Poppins'] text-xl font-bold tracking-wide shadow-lg transition-all duration-300"
                   style={{
-                    animationDelay: '100ms',
-                    animationDuration: '600ms',
-                    animationFillMode: 'both'
+                    animationDelay: "100ms",
+                    animationDuration: "600ms",
+                    animationFillMode: "both",
                   }}
                 >
                   <Gamepad2 className="h-6 w-6" />
@@ -128,7 +128,21 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">
-                        {session.player1Name} vs {session.player2Name}
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1">
+                            {session.player1Name}
+                            {session.player1Id && (
+                              <CheckCircle className="h-4 w-4 text-blue-500" />
+                            )}
+                          </span>
+                          <span>vs</span>
+                          <span className="flex items-center gap-1">
+                            {session.player2Name}
+                            {session.player2Id && (
+                              <CheckCircle className="h-4 w-4 text-blue-500" />
+                            )}
+                          </span>
+                        </div>
                       </CardTitle>
                       <span className="text-muted-foreground text-sm">
                         {formatDate(session.createdAt)}
@@ -138,13 +152,25 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
 
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>{session.player1Name} Wins:</span>
+                      <span className="flex items-center gap-1">
+                        {session.player1Name}
+                        {session.player1Id && (
+                          <CheckCircle className="h-3 w-3 text-blue-500" />
+                        )}
+                        <span className="ml-1">Wins:</span>
+                      </span>
                       <span className="font-medium text-emerald-600 dark:text-emerald-400">
                         {session.player1Wins}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{session.player2Name} Wins:</span>
+                      <span className="flex items-center gap-1">
+                        {session.player2Name}
+                        {session.player2Id && (
+                          <CheckCircle className="h-3 w-3 text-blue-500" />
+                        )}
+                        <span className="ml-1">Wins:</span>
+                      </span>
                       <span className="font-medium text-blue-600 dark:text-blue-400">
                         {session.player2Wins}
                       </span>

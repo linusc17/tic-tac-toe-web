@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Users, UserPlus } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { useAuth } from "@/src/contexts/AuthContext";
 
 export default function OnlinePage() {
+  const { user, token } = useAuth();
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  // Auto-populate player name if user is logged in
+  useEffect(() => {
+    if (user && !playerName) {
+      setPlayerName(user.username);
+    }
+  }, [user, playerName]);
 
   const connectSocket = (): Socket => {
     return io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000", {
@@ -38,7 +47,10 @@ export default function OnlinePage() {
     socket.on("connect", () => {
       socket.emit(
         "create_room",
-        playerName.trim(),
+        {
+          playerName: playerName.trim(),
+          token: token,
+        },
         (response: {
           success: boolean;
           roomCode?: string;
@@ -90,8 +102,11 @@ export default function OnlinePage() {
     socket.on("connect", () => {
       socket.emit(
         "join_room",
-        roomCode.trim().toUpperCase(),
-        playerName.trim(),
+        {
+          roomCode: roomCode.trim().toUpperCase(),
+          playerName: playerName.trim(),
+          token: token,
+        },
         (response: {
           success: boolean;
           roomCode?: string;
@@ -123,21 +138,21 @@ export default function OnlinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"
           onClick={() => router.push("/")}
           className="mb-8"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Button>
 
-        <div className="max-w-md mx-auto space-y-6">
+        <div className="mx-auto max-w-md space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl text-center">
+              <CardTitle className="text-center text-2xl">
                 Online Setup
               </CardTitle>
             </CardHeader>
@@ -147,15 +162,20 @@ export default function OnlinePage() {
                 <Input
                   id="playerName"
                   type="text"
-                  placeholder="Enter your name"
+                  placeholder={user ? user.username : "Enter your name"}
                   value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
+                  onChange={e => setPlayerName(e.target.value)}
                   maxLength={50}
                 />
+                {user && (
+                  <p className="text-muted-foreground text-xs">
+                    Playing as {user.username} (logged in)
+                  </p>
+                )}
               </div>
 
               {error && (
-                <div className="text-red-500 text-sm text-center">{error}</div>
+                <div className="text-center text-sm text-red-500">{error}</div>
               )}
 
               <div className="space-y-4">
@@ -169,13 +189,13 @@ export default function OnlinePage() {
                     <>Creating Room...</>
                   ) : (
                     <>
-                      <Users className="h-5 w-5 mr-2" />
+                      <Users className="mr-2 h-5 w-5" />
                       Create New Room
                     </>
                   )}
                 </Button>
 
-                <div className="text-center text-sm text-muted-foreground">
+                <div className="text-muted-foreground text-center text-sm">
                   OR
                 </div>
 
@@ -186,7 +206,7 @@ export default function OnlinePage() {
                     type="text"
                     placeholder="Enter 6-character room code"
                     value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                    onChange={e => setRoomCode(e.target.value.toUpperCase())}
                     maxLength={6}
                   />
                 </div>
@@ -204,7 +224,7 @@ export default function OnlinePage() {
                     <>Joining Room...</>
                   ) : (
                     <>
-                      <UserPlus className="h-5 w-5 mr-2" />
+                      <UserPlus className="mr-2 h-5 w-5" />
                       Join Room
                     </>
                   )}
@@ -215,7 +235,7 @@ export default function OnlinePage() {
 
           <Card>
             <CardContent>
-              <div className="text-sm text-muted-foreground space-y-2">
+              <div className="text-muted-foreground space-y-2 text-sm">
                 <p>
                   <strong>How to play online:</strong>
                 </p>

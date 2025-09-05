@@ -49,12 +49,16 @@ export const useOnlineGame = ({
   useEffect(() => {
     if (!socket) return;
 
-    // Join existing room
+    // Join existing room (when navigating to game page after create_room/join_room)
+    const token = localStorage.getItem("token");
     socket.emit(
       "join_existing_room",
-      roomCode,
-      decodeURIComponent(playerName),
-      playerSymbol,
+      {
+        roomCode,
+        playerName: decodeURIComponent(playerName),
+        playerSymbol,
+        token,
+      },
       (response: { success: boolean; error?: string }) => {
         if (!response.success) {
           toast.error(response.error || "Failed to join room");
@@ -95,6 +99,8 @@ export const useOnlineGame = ({
         }
         if (data.gameState.winner || data.gameState.isDraw) {
           setShowRoundEnd(true);
+          // Emit event to refresh user stats in real-time
+          window.dispatchEvent(new CustomEvent("userStatsUpdated"));
         }
       }
     );

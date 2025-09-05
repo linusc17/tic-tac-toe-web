@@ -18,7 +18,6 @@ import {
   Check,
 } from "lucide-react";
 import FloatingChat from "@/components/FloatingChat";
-import { ChatMessage } from "@/src/types/chat";
 import { toast } from "sonner";
 
 // Import our custom hooks and utilities
@@ -192,15 +191,29 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                     <p className="text-muted-foreground text-sm">
                       You ({currentPlayerSymbol})
                     </p>
-                    <p className="text-lg font-semibold">
+                    <div className="flex items-center justify-center gap-1 text-lg font-semibold">
                       {formatPlayerName(playerName)}
-                    </p>
+                      {(() => {
+                        const currentPlayer = getPlayerByName(
+                          players,
+                          formatPlayerName(playerName)
+                        );
+                        return (
+                          currentPlayer?.userId && (
+                            <CheckCircle className="h-4 w-4 text-blue-500" />
+                          )
+                        );
+                      })()}
+                    </div>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-sm">Opponent</p>
-                    <p className="text-lg font-semibold">
+                    <div className="flex items-center justify-center gap-1 text-lg font-semibold">
                       {opponent?.name || "Waiting..."}
-                    </p>
+                      {opponent?.userId && (
+                        <CheckCircle className="h-4 w-4 text-blue-500" />
+                      )}
+                    </div>
                   </div>
                 </div>
 

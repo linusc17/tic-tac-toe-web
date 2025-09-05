@@ -6,6 +6,7 @@ export interface Player {
   id: string;
   name: string;
   symbol: string;
+  userId?: string | null;
 }
 
 export interface GameState {
