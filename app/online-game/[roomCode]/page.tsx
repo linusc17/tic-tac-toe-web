@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,28 +17,26 @@ import {
   User,
   Check,
 } from "lucide-react";
-import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
 import { ChatMessage } from "@/src/types/chat";
-import { GameSession } from "@/src/types/game";
 import { toast } from "sonner";
+
+// Import our custom hooks and utilities
+import { useSocket } from "@/src/hooks/useSocket";
+import { useOnlineGame } from "@/src/hooks/useOnlineGame";
+import {
+  canMakeMove,
+  getOpponentPlayer,
+  getWinnerPlayer,
+  getCurrentPlayer,
+  getPlayerByName,
+  getGameStatusMessage,
+  getPlayerStats,
+  formatPlayerName,
+} from "@/src/utils/gameUtils";
 
 interface OnlineGameProps {
   params: Promise<{ roomCode: string }>;
-}
-
-interface GameState {
-  board: (string | null)[];
-  currentTurn: string;
-  winner: string | null;
-  isDraw: boolean;
-  isActive: boolean;
-}
-
-interface Player {
-  id: string;
-  name: string;
-  symbol: string;
 }
 
 export default function OnlineGamePage({ params }: OnlineGameProps) {
@@ -49,166 +47,44 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   const playerSymbol = searchParams.get("symbol") || "X";
   const playerName = searchParams.get("name") || "Player";
 
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [gameState, setGameState] = useState<GameState>({
-    board: Array(9).fill(null),
-    currentTurn: "X",
-    winner: null,
-    isDraw: false,
-    isActive: false,
-  });
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [waitingForPlayer, setWaitingForPlayer] = useState(true);
-  const [connectionError, setConnectionError] = useState("");
-  const [showRoundEnd, setShowRoundEnd] = useState(false);
-  const [gameSession, setGameSession] = useState<GameSession | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [readyStatus, setReadyStatus] = useState({
-    readyCount: 0,
-    totalPlayers: 2,
-    playerReady: "",
-  });
+  // Use our custom hooks
+  const { socket, isConnected, connectionError } = useSocket();
+  const {
+    gameState,
+    players,
+    waitingForPlayer,
+    showRoundEnd,
+    gameSession,
+    chatMessages,
+    isPlayerReady,
+    readyStatus,
+    isMovePending,
+    makeMove,
+    setPlayerReady,
+    sendChatMessage,
+  } = useOnlineGame({ socket, roomCode, playerName, playerSymbol });
+
   const [isCopied, setIsCopied] = useState(false);
 
-  useEffect(() => {
-    const newSocket = io(
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
-      {
-        transports: ["websocket"],
-      }
-    );
-
-    newSocket.on("connect", () => {
-      setIsConnected(true);
-      setConnectionError("");
-
-      newSocket.emit(
-        "join_existing_room",
-        roomCode,
-        decodeURIComponent(playerName),
-        playerSymbol,
-        (response: { success: boolean; error?: string }) => {
-          if (!response.success) {
-            setConnectionError(response.error || "Failed to join room");
-            toast.error(response.error || "Failed to join room");
-          }
-        }
-      );
-    });
-
-    newSocket.on("connect_error", () => {
-      setIsConnected(false);
-      setConnectionError("Connection failed");
-      setChatMessages([]); // Clear chat messages on connection error
-      toast.error("Connection failed");
-    });
-
-    newSocket.on("disconnect", () => {
-      setIsConnected(false);
-      setChatMessages([]); // Clear chat messages on disconnect
-    });
-
-    newSocket.on(
-      "game_ready",
-      (data: {
-        players: Player[];
-        gameState: GameState;
-        gameSession: GameSession | null;
-      }) => {
-        setPlayers(data.players);
-        setGameState(data.gameState);
-        if (data.gameSession) {
-          setGameSession(data.gameSession);
-        }
-        setWaitingForPlayer(false);
-      }
-    );
-
-    newSocket.on(
-      "move_made",
-      (data: {
-        position: number;
-        player: string;
-        gameState: GameState;
-        gameSession?: GameSession;
-      }) => {
-        setGameState(data.gameState);
-        if (data.gameSession) {
-          setGameSession(data.gameSession);
-        }
-        if (data.gameState.winner || data.gameState.isDraw) {
-          setShowRoundEnd(true);
-        }
-      }
-    );
-
-    newSocket.on("player_disconnected", () => {
-      setConnectionError("Other player disconnected");
-      setIsConnected(false);
-      setChatMessages([]); // Clear chat messages when player disconnects
-      toast.error("Other player disconnected");
-    });
-
-    newSocket.on(
-      "new_round_started",
-      (data: {
-        gameState: GameState;
-        players: Player[];
-        gameSession: GameSession | null;
-      }) => {
-        setGameState(data.gameState);
-        setPlayers(data.players);
-        if (data.gameSession) {
-          setGameSession(data.gameSession);
-        }
-        setShowRoundEnd(false);
-        setIsPlayerReady(false);
-        setReadyStatus({ readyCount: 0, totalPlayers: 2, playerReady: "" });
-      }
-    );
-
-    newSocket.on(
-      "player_ready_status",
-      (data: {
-        readyCount: number;
-        totalPlayers: number;
-        playerReady: string;
-      }) => {
-        setReadyStatus(data);
-      }
-    );
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [roomCode, playerName, playerSymbol]);
-
+  // Handle cell clicks using the utility function and custom hook
   const handleCellClick = (index: number) => {
+    const currentPlayerSymbol =
+      getPlayerByName(players, formatPlayerName(playerName))?.symbol ||
+      playerSymbol;
+
     if (
-      !socket ||
-      !isConnected ||
-      !gameState.isActive ||
-      gameState.board[index] !== null ||
-      gameState.currentTurn !== getCurrentPlayerSymbol()
+      !canMakeMove(
+        gameState,
+        index,
+        currentPlayerSymbol,
+        isConnected,
+        isMovePending
+      )
     ) {
       return;
     }
 
-    socket.emit(
-      "make_move",
-      roomCode,
-      index,
-      (response: { success: boolean; error?: string }) => {
-        if (!response.success) {
-          console.error("Move failed:", response.error);
-          toast.error(response.error || "Move failed");
-        }
-      }
-    );
+    makeMove(index);
   };
 
   const copyRoomCode = () => {
@@ -223,40 +99,21 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     }, 5000);
   };
 
-  const getCurrentPlayerSymbol = () => {
-    const currentPlayer = players.find(
-      (p) => p.name === decodeURIComponent(playerName)
-    );
-    return currentPlayer?.symbol || playerSymbol;
-  };
-
-  const getOpponentName = () => {
-    const currentSymbol = getCurrentPlayerSymbol();
-    return (
-      players.find((p) => p.symbol !== currentSymbol)?.name || "Waiting..."
-    );
-  };
-
-  const getCurrentTurnName = () => {
-    const currentPlayer = players.find(
-      (p) => p.symbol === gameState.currentTurn
-    );
-    return currentPlayer?.name || "Unknown";
-  };
-
-  const getWinnerName = () => {
-    if (!gameState.winner) return null;
-    const winner = players.find((p) => p.symbol === gameState.winner);
-    return winner?.name || "Unknown";
-  };
-
-  const isMyTurn = () => gameState.currentTurn === getCurrentPlayerSymbol();
+  // Use utility functions for game logic
+  const currentPlayerSymbol =
+    getPlayerByName(players, formatPlayerName(playerName))?.symbol ||
+    playerSymbol;
+  const opponent = getOpponentPlayer(players, formatPlayerName(playerName));
+  const winner = getWinnerPlayer(players, gameState);
+  const gameStatus = getGameStatusMessage(
+    gameState,
+    players,
+    formatPlayerName(playerName),
+    isMovePending
+  );
 
   const handlePlayerReady = () => {
-    if (!socket || isPlayerReady) return;
-
-    setIsPlayerReady(true);
-    socket.emit("player_ready", roomCode);
+    setPlayerReady();
   };
 
   const handleStop = () => {
@@ -264,25 +121,26 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   };
 
   const handleNewChatMessage = (message: ChatMessage) => {
-    setChatMessages((prev) => [...prev, message]);
+    // Chat messages are now handled by the useOnlineGame hook
+    // This function is kept for compatibility with FloatingChat
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"
           onClick={() => router.push("/online")}
           className="mb-8"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Online
         </Button>
 
-        <div className="max-w-2xl mx-auto">
+        <div className="mx-auto max-w-2xl">
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-2xl text-center">
+              <CardTitle className="text-center text-2xl">
                 Online Game
               </CardTitle>
             </CardHeader>
@@ -311,7 +169,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                       disabled={isCopied}
                       className={`h-8 w-8 p-0 transition-colors ${
                         isCopied
-                          ? "bg-green-100 hover:bg-green-100 text-green-600"
+                          ? "bg-green-100 text-green-600 hover:bg-green-100"
                           : ""
                       }`}
                     >
@@ -326,47 +184,53 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      You ({getCurrentPlayerSymbol()})
+                    <p className="text-muted-foreground text-sm">
+                      You ({currentPlayerSymbol})
                     </p>
                     <p className="text-lg font-semibold">
-                      {decodeURIComponent(playerName)}
+                      {formatPlayerName(playerName)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Opponent</p>
-                    <p className="text-lg font-semibold">{getOpponentName()}</p>
+                    <p className="text-muted-foreground text-sm">Opponent</p>
+                    <p className="text-lg font-semibold">
+                      {opponent?.name || "Waiting..."}
+                    </p>
                   </div>
                 </div>
 
                 {gameSession && (
-                  <div className="grid grid-cols-4 gap-2 text-center border-t pt-4">
+                  <div className="grid grid-cols-4 gap-2 border-t pt-4 text-center">
                     <div>
-                      <p className="text-xs text-muted-foreground">Your Wins</p>
+                      <p className="text-muted-foreground text-xs">Your Wins</p>
                       <p className="text-lg font-bold text-green-600">
-                        {getCurrentPlayerSymbol() === "X"
-                          ? gameSession.player1Wins
-                          : gameSession.player2Wins}
+                        {getPlayerStats(
+                          gameSession,
+                          currentPlayerSymbol,
+                          "wins"
+                        )}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         Opponent Wins
                       </p>
                       <p className="text-lg font-bold text-blue-600">
-                        {getCurrentPlayerSymbol() === "X"
-                          ? gameSession.player2Wins
-                          : gameSession.player1Wins}
+                        {getPlayerStats(
+                          gameSession,
+                          currentPlayerSymbol,
+                          "losses"
+                        )}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Draws</p>
-                      <p className="text-lg font-bold text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">Draws</p>
+                      <p className="text-muted-foreground text-lg font-bold">
                         {gameSession.draws}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Rounds</p>
+                      <p className="text-muted-foreground text-xs">Rounds</p>
                       <p className="text-lg font-bold">
                         {gameSession.totalRounds}
                       </p>
@@ -380,7 +244,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
           {connectionError && (
             <Card className="mb-8 border-red-500">
               <CardContent>
-                <p className="text-red-500 text-center">{connectionError}</p>
+                <p className="text-center text-red-500">{connectionError}</p>
               </CardContent>
             </Card>
           )}
@@ -391,7 +255,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                 <p className="text-center text-lg">
                   Waiting for another player to join...
                 </p>
-                <p className="text-center text-sm text-muted-foreground mt-2">
+                <p className="text-muted-foreground mt-2 text-center text-sm">
                   Share room code: <strong>{roomCode}</strong>
                 </p>
               </CardContent>
@@ -403,50 +267,52 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
               <CardHeader>
                 <div className="text-center">
                   {gameState.winner ? (
-                    <p className="text-xl font-semibold text-green-600 flex items-center justify-center gap-2">
+                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-green-600">
                       <Trophy className="h-6 w-6" />
-                      {getWinnerName()} Wins!
+                      {winner?.name || "Unknown"} Wins!
                     </p>
                   ) : gameState.isDraw ? (
-                    <p className="text-xl font-semibold text-yellow-600 flex items-center justify-center gap-2">
+                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-yellow-600">
                       <HandHeart className="h-6 w-6" />
                       It&apos;s a Draw!
                     </p>
                   ) : (
                     <div>
                       <p className="text-xl font-semibold">
-                        {isMyTurn()
-                          ? "Your Turn"
-                          : `${getCurrentTurnName()}'s Turn`}
+                        {gameStatus.title}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {isMyTurn()
-                          ? "Click a square to make your move"
-                          : "Wait for your opponent"}
+                      <p className="text-muted-foreground text-sm">
+                        {gameStatus.subtitle}
                       </p>
                     </div>
                   )}
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-2 max-w-sm mx-auto mb-8">
+                <div className="mx-auto mb-8 grid max-w-sm grid-cols-3 gap-2">
                   {gameState.board.map((cell, index) => (
                     <button
                       key={index}
                       onClick={() => handleCellClick(index)}
-                      className={`aspect-square bg-secondary hover:bg-secondary/80 rounded-lg flex items-center justify-center text-4xl font-bold transition-colors ${
-                        !isMyTurn() ||
-                        gameState.winner ||
-                        gameState.isDraw ||
-                        !gameState.isActive
+                      className={`bg-secondary hover:bg-secondary/80 flex aspect-square items-center justify-center rounded-lg text-4xl font-bold transition-colors ${
+                        !canMakeMove(
+                          gameState,
+                          index,
+                          currentPlayerSymbol,
+                          isConnected,
+                          isMovePending
+                        )
                           ? "cursor-not-allowed opacity-50"
                           : "cursor-pointer"
                       }`}
                       disabled={
-                        !isMyTurn() ||
-                        !!gameState.winner ||
-                        gameState.isDraw ||
-                        !gameState.isActive
+                        !canMakeMove(
+                          gameState,
+                          index,
+                          currentPlayerSymbol,
+                          isConnected,
+                          isMovePending
+                        )
                       }
                     >
                       {cell}
@@ -455,14 +321,14 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                 </div>
 
                 {showRoundEnd && (
-                  <div className="text-center space-y-4 p-6 bg-secondary/50 rounded-lg">
+                  <div className="bg-secondary/50 space-y-4 rounded-lg p-6 text-center">
                     <p className="text-lg font-medium">Round Complete!</p>
 
                     {readyStatus.readyCount === 2 ? (
                       <div className="space-y-3">
                         <div className="flex items-center justify-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-green-600 animate-pulse" />
-                          <p className="text-green-600 font-medium">
+                          <CheckCircle className="h-5 w-5 animate-pulse text-green-600" />
+                          <p className="font-medium text-green-600">
                             Starting new round...
                           </p>
                         </div>
@@ -470,18 +336,18 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                     ) : (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="flex items-center justify-center gap-2 p-2 bg-background/50 rounded">
+                          <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
                             {isPlayerReady ? (
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
-                              <User className="h-4 w-4 text-muted-foreground" />
+                              <User className="text-muted-foreground h-4 w-4" />
                             )}
                             <span className="text-xs">
-                              {decodeURIComponent(playerName)}{" "}
+                              {formatPlayerName(playerName)}{" "}
                               {isPlayerReady ? "Ready" : "Not Ready"}
                             </span>
                           </div>
-                          <div className="flex items-center justify-center gap-2 p-2 bg-background/50 rounded">
+                          <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
                             {(() => {
                               const opponentReady = isPlayerReady
                                 ? readyStatus.readyCount === 2
@@ -493,12 +359,12 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                                 );
                               } else {
                                 return (
-                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <User className="text-muted-foreground h-4 w-4" />
                                 );
                               }
                             })()}
                             <span className="text-xs">
-                              {getOpponentName()}{" "}
+                              {opponent?.name || "Waiting..."}{" "}
                               {(() => {
                                 const opponentReady = isPlayerReady
                                   ? readyStatus.readyCount === 2
@@ -509,7 +375,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                           </div>
                         </div>
 
-                        <div className="flex gap-4 justify-center">
+                        <div className="flex justify-center gap-4">
                           <Button
                             onClick={handlePlayerReady}
                             size="lg"
@@ -518,12 +384,12 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                           >
                             {isPlayerReady ? (
                               <>
-                                <Clock className="h-4 w-4 mr-2 animate-pulse" />
+                                <Clock className="mr-2 h-4 w-4 animate-pulse" />
                                 Continue ({readyStatus.readyCount}/2)
                               </>
                             ) : (
                               <>
-                                <Play className="h-4 w-4 mr-2" />
+                                <Play className="mr-2 h-4 w-4" />
                                 Continue
                               </>
                             )}
@@ -538,8 +404,9 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                         </div>
 
                         {isPlayerReady && (
-                          <p className="text-xs text-muted-foreground animate-in fade-in duration-500">
-                            Waiting for {getOpponentName()} to continue...
+                          <p className="text-muted-foreground animate-in fade-in text-xs duration-500">
+                            Waiting for {opponent?.name || "opponent"} to
+                            continue...
                           </p>
                         )}
                       </div>
