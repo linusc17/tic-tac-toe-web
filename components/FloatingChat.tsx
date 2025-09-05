@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, X } from "lucide-react";
 import { Socket } from "socket.io-client";
 import { ChatMessage } from "@/src/types/chat";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface FloatingChatProps {
   socket: Socket | null;
@@ -14,6 +20,8 @@ interface FloatingChatProps {
   isVisible: boolean;
   chatMessages: ChatMessage[];
   onNewMessage: (message: ChatMessage) => void;
+  isConnected?: boolean;
+  playersCount?: number;
 }
 
 export default function FloatingChat({
@@ -23,6 +31,8 @@ export default function FloatingChat({
   isVisible,
   chatMessages,
   onNewMessage,
+  isConnected = true,
+  playersCount = 2,
 }: FloatingChatProps) {
   const [newMessage, setNewMessage] = useState("");
   const [showChat, setShowChat] = useState(false);
@@ -57,7 +67,8 @@ export default function FloatingChat({
   }, [chatMessages]);
 
   const sendMessage = () => {
-    if (!socket || !newMessage.trim()) return;
+    if (!socket || !newMessage.trim() || !isConnected || playersCount < 2)
+      return;
 
     socket.emit(
       "send_message",
@@ -87,10 +98,17 @@ export default function FloatingChat({
     }, 200);
   };
 
+  const isChatDisabled = !isConnected || playersCount < 2;
+  const tooltipMessage = !isConnected
+    ? "Connect to chat"
+    : playersCount < 2
+    ? "Wait for other player to join"
+    : "";
+
   if (!isVisible) return null;
 
   return (
-    <>
+    <TooltipProvider>
       <style jsx>{`
         @keyframes chatSlideIn {
           0% {
@@ -158,16 +176,32 @@ export default function FloatingChat({
               animation: "buttonSlideIn 0.2s ease-out forwards",
             }}
           >
-            <Button
-              onClick={openChat}
-              className={`rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 ${
-                unreadCount > 0 ? "animate-pulse shadow-blue-300" : ""
-              }`}
-              size="lg"
-            >
-              <MessageCircle className="h-6 w-6" />
-            </Button>
-            {unreadCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-block">
+                  <Button
+                    onClick={isChatDisabled ? undefined : openChat}
+                    disabled={isChatDisabled}
+                    className={`rounded-full h-14 w-14 shadow-lg transition-all duration-200 ${
+                      isChatDisabled
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:shadow-xl hover:scale-105 active:scale-95"
+                    } ${
+                      unreadCount > 0 ? "animate-pulse shadow-blue-300" : ""
+                    }`}
+                    size="lg"
+                  >
+                    <MessageCircle className="h-6 w-6" />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {isChatDisabled && (
+                <TooltipContent>
+                  <p>{tooltipMessage}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+            {unreadCount > 0 && !isChatDisabled && (
               <div
                 className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold"
                 style={{ animation: "badgeBounce 1s ease-in-out" }}
@@ -228,7 +262,7 @@ export default function FloatingChat({
                       }`}
                     >
                       {msg.playerName !== decodeURIComponent(playerName) && (
-                        <p className="text-xs font-medium mb-1">
+                        <p className="text-sm font-bold mb-1">
                           {msg.playerName}
                         </p>
                       )}
@@ -250,16 +284,21 @@ export default function FloatingChat({
             <div className="p-4 border-t">
               <div className="flex gap-2 items-center">
                 <Input
-                  placeholder="Type a message..."
+                  placeholder={
+                    isChatDisabled ? tooltipMessage : "Type a message..."
+                  }
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onChange={(e) =>
+                    isChatDisabled ? null : setNewMessage(e.target.value)
+                  }
+                  onKeyPress={isChatDisabled ? undefined : handleKeyPress}
+                  disabled={isChatDisabled}
                   maxLength={200}
                   className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-blue-300"
                 />
                 <Button
                   onClick={sendMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={isChatDisabled || !newMessage.trim()}
                   size="sm"
                   className="transition-all duration-200 hover:scale-105 active:scale-95"
                 >
@@ -270,6 +309,6 @@ export default function FloatingChat({
           </div>
         )}
       </div>
-    </>
+    </TooltipProvider>
   );
 }

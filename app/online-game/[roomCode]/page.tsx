@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle,
   User,
+  Check,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
@@ -69,6 +70,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     totalPlayers: 2,
     playerReady: "",
   });
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     const newSocket = io(
@@ -99,16 +101,22 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     newSocket.on("connect_error", () => {
       setIsConnected(false);
       setConnectionError("Connection failed");
+      setChatMessages([]); // Clear chat messages on connection error
       toast.error("Connection failed");
     });
 
     newSocket.on("disconnect", () => {
       setIsConnected(false);
+      setChatMessages([]); // Clear chat messages on disconnect
     });
 
     newSocket.on(
       "game_ready",
-      (data: { players: Player[]; gameState: GameState; gameSession: GameSession | null }) => {
+      (data: {
+        players: Player[];
+        gameState: GameState;
+        gameSession: GameSession | null;
+      }) => {
         setPlayers(data.players);
         setGameState(data.gameState);
         if (data.gameSession) {
@@ -139,12 +147,17 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     newSocket.on("player_disconnected", () => {
       setConnectionError("Other player disconnected");
       setIsConnected(false);
+      setChatMessages([]); // Clear chat messages when player disconnects
       toast.error("Other player disconnected");
     });
 
     newSocket.on(
       "new_round_started",
-      (data: { gameState: GameState; players: Player[]; gameSession: GameSession | null }) => {
+      (data: {
+        gameState: GameState;
+        players: Player[];
+        gameSession: GameSession | null;
+      }) => {
         setGameState(data.gameState);
         setPlayers(data.players);
         if (data.gameSession) {
@@ -199,8 +212,15 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   };
 
   const copyRoomCode = () => {
+    if (isCopied) return;
+
     navigator.clipboard.writeText(roomCode);
     toast.success("Room code copied to clipboard!");
+    setIsCopied(true);
+
+    setTimeout(() => {
+      setIsCopied(false);
+    }, 5000);
   };
 
   const getCurrentPlayerSymbol = () => {
@@ -288,9 +308,18 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                       variant="outline"
                       size="sm"
                       onClick={copyRoomCode}
-                      className="h-8 w-8 p-0"
+                      disabled={isCopied}
+                      className={`h-8 w-8 p-0 transition-colors ${
+                        isCopied
+                          ? "bg-green-100 hover:bg-green-100 text-green-600"
+                          : ""
+                      }`}
                     >
-                      <Copy className="h-4 w-4" />
+                      {isCopied ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -524,9 +553,11 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
             socket={socket}
             roomCode={roomCode}
             playerName={playerName}
-            isVisible={!waitingForPlayer}
+            isVisible={!waitingForPlayer && !connectionError}
             chatMessages={chatMessages}
             onNewMessage={handleNewChatMessage}
+            isConnected={isConnected}
+            playersCount={players.length}
           />
         </div>
       </div>
