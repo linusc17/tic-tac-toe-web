@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { GameSession } from "@/src/types/game";
-import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2, Play, Loader2 } from "lucide-react";
@@ -13,12 +12,10 @@ interface HomePageProps {
   onStartOnline: () => void;
 }
 
-export function HomePage({
-  onStartNewGame,
-  onStartOnline,
-}: HomePageProps) {
+export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSplitButtons, setShowSplitButtons] = useState(false);
 
   useEffect(() => {
     fetchGameSessions();
@@ -54,50 +51,67 @@ export function HomePage({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <Gamepad2 className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold">Tic Tac Toe</h1>
+        <div className="mb-12 space-y-4 text-center">
+          <div className="relative flex justify-center items-center min-h-[80px]">
+            {!showSplitButtons ? (
+              <Button
+                onClick={() => setShowSplitButtons(true)}
+                size="lg"
+                className="gap-3 px-16 py-8 text-3xl font-black tracking-wider transition-all duration-500 transform hover:scale-105 shadow-xl font-['Poppins']"
+              >
+                <Play className="h-10 w-10" />
+                PLAY
+              </Button>
+            ) : (
+              <div className="flex gap-6 animate-in fade-in duration-500">
+                <Button
+                  onClick={onStartNewGame}
+                  size="lg"
+                  className="gap-2 px-8 py-4 text-xl font-bold tracking-wide transition-all duration-300 transform translate-x-0 animate-in slide-in-from-right-20 shadow-lg font-['Poppins']"
+                  style={{
+                    animationDelay: '100ms',
+                    animationDuration: '600ms',
+                    animationFillMode: 'both'
+                  }}
+                >
+                  <Play className="h-6 w-6" />
+                  Local Game
+                </Button>
+                <Button
+                  onClick={onStartOnline}
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 px-8 py-4 text-xl font-bold tracking-wide transition-all duration-300 transform translate-x-0 animate-in slide-in-from-left-20 shadow-lg font-['Poppins']"
+                  style={{
+                    animationDelay: '100ms',
+                    animationDuration: '600ms',
+                    animationFillMode: 'both'
+                  }}
+                >
+                  <Gamepad2 className="h-6 w-6" />
+                  Online Game
+                </Button>
+              </div>
+            )}
           </div>
-          <ThemeToggle />
         </div>
 
-        <div className="text-center mb-12 space-y-4">
-          <Button
-            onClick={onStartNewGame}
-            size="lg"
-            className="px-8 py-4 text-xl font-semibold gap-2 mr-4"
-          >
-            <Play className="h-6 w-6" />
-            Local Game
-          </Button>
-          <Button
-            onClick={onStartOnline}
-            size="lg"
-            variant="outline"
-            className="px-8 py-4 text-xl font-semibold gap-2"
-          >
-            <Gamepad2 className="h-6 w-6" />
-            Online Game
-          </Button>
-        </div>
-
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-semibold mb-6">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="mb-6 text-2xl font-semibold">
             Previous Game Sessions
           </h2>
 
           {loading ? (
-            <div className="text-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-              <p className="mt-4 text-muted-foreground">
+            <div className="py-12 text-center">
+              <Loader2 className="text-primary mx-auto h-8 w-8 animate-spin" />
+              <p className="text-muted-foreground mt-4">
                 Loading game sessions...
               </p>
             </div>
           ) : gameSessions.length === 0 ? (
-            <Card className="text-center py-12">
+            <Card className="py-12 text-center">
               <CardContent className="py-8">
                 <p className="text-muted-foreground text-lg">
                   No game sessions yet. Start your first game!
@@ -106,17 +120,17 @@ export function HomePage({
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {gameSessions.map((session) => (
+              {gameSessions.map(session => (
                 <Card
                   key={session.id}
-                  className="hover:shadow-md transition-shadow"
+                  className="transition-shadow hover:shadow-md"
                 >
                   <CardHeader>
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">
                         {session.player1Name} vs {session.player2Name}
                       </CardTitle>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {formatDate(session.createdAt)}
                       </span>
                     </div>
@@ -137,11 +151,11 @@ export function HomePage({
                     </div>
                     <div className="flex justify-between">
                       <span>Draws:</span>
-                      <span className="font-medium text-muted-foreground">
+                      <span className="text-muted-foreground font-medium">
                         {session.draws}
                       </span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t">
+                    <div className="flex justify-between border-t pt-2">
                       <span>Total Rounds:</span>
                       <span className="font-medium">{session.totalRounds}</span>
                     </div>
