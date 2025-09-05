@@ -6,6 +6,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2, Play, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface HomePageProps {
   onStartNewGame: () => void;
@@ -31,9 +32,12 @@ export function HomePage({
       if (response.ok) {
         const result = await response.json();
         setGameSessions(result.data || []);
+      } else {
+        toast.error("Failed to load recent games");
       }
     } catch (error) {
       console.error("Failed to fetch game sessions:", error);
+      toast.error("Failed to load recent games");
     } finally {
       setLoading(false);
     }

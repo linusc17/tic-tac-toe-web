@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Users, UserPlus } from "lucide-react";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 
 export default function OnlinePage() {
   const [playerName, setPlayerName] = useState("");
@@ -25,6 +26,7 @@ export default function OnlinePage() {
   const handleCreateRoom = async () => {
     if (!playerName.trim()) {
       setError("Please enter your name");
+      toast.error("Please enter your name");
       return;
     }
 
@@ -52,6 +54,7 @@ export default function OnlinePage() {
             );
           } else {
             setError("Failed to create room");
+            toast.error("Failed to create room");
             setIsConnecting(false);
             socket.disconnect();
           }
@@ -61,6 +64,7 @@ export default function OnlinePage() {
 
     socket.on("connect_error", () => {
       setError("Failed to connect to server");
+      toast.error("Failed to connect to server");
       setIsConnecting(false);
     });
   };
@@ -68,11 +72,13 @@ export default function OnlinePage() {
   const handleJoinRoom = async () => {
     if (!playerName.trim()) {
       setError("Please enter your name");
+      toast.error("Please enter your name");
       return;
     }
 
     if (!roomCode.trim()) {
       setError("Please enter room code");
+      toast.error("Please enter room code");
       return;
     }
 
@@ -101,6 +107,7 @@ export default function OnlinePage() {
             );
           } else {
             setError(response.error || "Failed to join room");
+            toast.error(response.error || "Failed to join room");
             setIsConnecting(false);
             socket.disconnect();
           }
@@ -110,6 +117,7 @@ export default function OnlinePage() {
 
     socket.on("connect_error", () => {
       setError("Failed to connect to server");
+      toast.error("Failed to connect to server");
       setIsConnecting(false);
     });
   };

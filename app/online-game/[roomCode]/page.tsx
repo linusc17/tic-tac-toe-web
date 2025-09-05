@@ -20,6 +20,7 @@ import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
 import { ChatMessage } from "@/src/types/chat";
 import { GameSession } from "@/src/types/game";
+import { toast } from "sonner";
 
 interface OnlineGameProps {
   params: Promise<{ roomCode: string }>;
@@ -89,6 +90,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
         (response: { success: boolean; error?: string }) => {
           if (!response.success) {
             setConnectionError(response.error || "Failed to join room");
+            toast.error(response.error || "Failed to join room");
           }
         }
       );
@@ -97,6 +99,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     newSocket.on("connect_error", () => {
       setIsConnected(false);
       setConnectionError("Connection failed");
+      toast.error("Connection failed");
     });
 
     newSocket.on("disconnect", () => {
@@ -136,6 +139,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     newSocket.on("player_disconnected", () => {
       setConnectionError("Other player disconnected");
       setIsConnected(false);
+      toast.error("Other player disconnected");
     });
 
     newSocket.on(
@@ -188,6 +192,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
       (response: { success: boolean; error?: string }) => {
         if (!response.success) {
           console.error("Move failed:", response.error);
+          toast.error(response.error || "Move failed");
         }
       }
     );
@@ -195,6 +200,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
+    toast.success("Room code copied to clipboard!");
   };
 
   const getCurrentPlayerSymbol = () => {

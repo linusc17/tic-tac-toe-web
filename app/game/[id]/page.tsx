@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, RotateCcw, Trophy, HandHeart } from "lucide-react";
 import { GameSession, GameState } from "@/src/types/game";
+import { toast } from "sonner";
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
@@ -34,9 +35,11 @@ export default function GamePage({ params }: GamePageProps) {
         const result = await response.json();
         setGameSession(result.data || result);
       } else {
+        toast.error("Game not found");
         router.push("/");
       }
     } catch {
+      toast.error("Failed to load game");
       router.push("/");
     } finally {
       setLoading(false);
@@ -126,9 +129,12 @@ export default function GamePage({ params }: GamePageProps) {
       if (response.ok) {
         const result = await response.json();
         setGameSession(result.data || result);
+      } else {
+        toast.error("Failed to update game session");
       }
     } catch (error) {
       console.error("Failed to update game session:", error);
+      toast.error("Failed to update game session");
     }
   };
 
@@ -145,6 +151,7 @@ export default function GamePage({ params }: GamePageProps) {
       setShowRoundEnd(false);
     } catch (error) {
       console.error("Error in handleContinue:", error);
+      toast.error("Failed to continue game");
     }
   };
 

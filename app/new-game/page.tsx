@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Play } from "lucide-react";
+import { toast } from "sonner";
 
 export default function NewGamePage() {
   const [player1Name, setPlayer1Name] = useState("");
@@ -16,12 +17,12 @@ export default function NewGamePage() {
 
   const handleStartGame = async () => {
     if (!player1Name.trim() || !player2Name.trim()) {
-      alert("Please enter both player names");
+      toast.error("Please enter both player names");
       return;
     }
 
     if (player1Name.trim() === player2Name.trim()) {
-      alert("Player names must be different");
+      toast.error("Player names must be different");
       return;
     }
 
@@ -44,14 +45,15 @@ export default function NewGamePage() {
       if (response.ok) {
         const result = await response.json();
         const gameId = result.id || result.data?.id || result._id;
+        toast.success("Game created successfully!");
         router.push(`/game/${gameId}`);
       } else {
         const error = await response.json();
-        alert(error.message || "Failed to create game session");
+        toast.error(error.message || "Failed to create game session");
       }
     } catch (error) {
       console.error("Error creating game:", error);
-      alert("Failed to create game session");
+      toast.error("Failed to create game session");
     } finally {
       setLoading(false);
     }
