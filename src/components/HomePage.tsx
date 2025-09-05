@@ -38,14 +38,30 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAllSessions, setShowAllSessions] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchGameSessions = useCallback(
-    async (page = 1, limit = showAllSessions ? 10 : 6) => {
+    async (page = 1, limit?: number) => {
+      const getItemsPerPage = () => {
+        if (!showAllSessions) return 6; // Keep original behavior for recent sessions
+        if (windowWidth >= 1024) return 9; // Large screens (lg): 3 columns × 3 rows = 9
+        if (windowWidth >= 768) return 8;  // Medium screens (md): 2 columns × 4 rows = 8  
+        return 6; // Small screens: 1 column × 6 rows = 6
+      };
+      
+      const itemsPerPage = limit || getItemsPerPage();
       try {
         setLoading(true);
         const params = new URLSearchParams({
           page: page.toString(),
-          limit: limit.toString(),
+          limit: itemsPerPage.toString(),
         });
 
         const response = await fetch(
@@ -68,7 +84,7 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
         setLoading(false);
       }
     },
-    [showAllSessions]
+[showAllSessions, windowWidth]
   );
 
   useEffect(() => {
@@ -81,18 +97,21 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
     }
   }, [currentPage, showAllSessions, fetchGameSessions]);
 
+  useEffect(() => {
+    if (showAllSessions && windowWidth > 0) {
+      setCurrentPage(1);
+      fetchGameSessions(1);
+    }
+  }, [windowWidth, showAllSessions, fetchGameSessions]);
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
 
   const toggleShowAllSessions = () => {
     setShowAllSessions(!showAllSessions);
-    if (!showAllSessions) {
-      setCurrentPage(1);
-      fetchGameSessions(1, 10);
-    } else {
-      fetchGameSessions(1, 6);
-    }
+    setCurrentPage(1);
+    // fetchGameSessions will be called by useEffect when showAllSessions changes
   };
 
   const formatDate = (dateString: string) => {
