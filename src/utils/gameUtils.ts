@@ -100,8 +100,15 @@ export const formatPlayerName = (playerName: string): string => {
 /**
  * Get player statistics based on their position in the game session
  */
+interface GameSession {
+  player1Wins: number;
+  player2Wins: number;
+  draws: number;
+  totalRounds: number;
+}
+
 export const getPlayerStats = (
-  gameSession: any,
+  gameSession: GameSession | null,
   playerSymbol: string,
   statType: "wins" | "losses"
 ) => {

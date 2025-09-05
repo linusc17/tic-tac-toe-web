@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -9,6 +9,7 @@ interface UseSocketOptions {
 
 interface ConnectionState {
   isConnected: boolean;
+  isConnecting: boolean;
   connectionError: string;
   socket: Socket | null;
 }
@@ -21,16 +22,23 @@ export const useSocket = (options: UseSocketOptions = {}) => {
 
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     isConnected: false,
+    isConnecting: false,
     connectionError: "",
     socket: null,
   });
 
   const socketRef = useRef<Socket | null>(null);
 
-  const connect = () => {
+  const connect = useCallback(() => {
     if (socketRef.current?.connected) {
       return socketRef.current;
     }
+
+    setConnectionState(prev => ({
+      ...prev,
+      isConnecting: true,
+      connectionError: "",
+    }));
 
     const newSocket = io(url, {
       transports: ["websocket"],
@@ -40,6 +48,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       setConnectionState(prev => ({
         ...prev,
         isConnected: true,
+        isConnecting: false,
         connectionError: "",
         socket: newSocket,
       }));
@@ -49,6 +58,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
+        isConnecting: false,
         connectionError: "Connection failed",
         socket: null,
       }));
@@ -60,6 +70,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
+        isConnecting: false,
         socket: null,
       }));
       console.log("Socket disconnected:", reason);
@@ -67,7 +78,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
 
     socketRef.current = newSocket;
     return newSocket;
-  };
+  }, [url]);
 
   const disconnect = () => {
     if (socketRef.current) {
@@ -76,6 +87,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
+        isConnecting: false,
         socket: null,
       }));
     }
@@ -89,7 +101,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
     return () => {
       disconnect();
     };
-  }, [url, autoConnect]);
+  }, [autoConnect, connect]);
 
   return {
     ...connectionState,

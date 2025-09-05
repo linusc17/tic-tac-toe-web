@@ -28,7 +28,6 @@ import {
   canMakeMove,
   getOpponentPlayer,
   getWinnerPlayer,
-  getCurrentPlayer,
   getPlayerByName,
   getGameStatusMessage,
   getPlayerStats,
@@ -48,7 +47,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   const playerName = searchParams.get("name") || "Player";
 
   // Use our custom hooks
-  const { socket, isConnected, connectionError } = useSocket();
+  const { socket, isConnected, isConnecting, connectionError } = useSocket();
   const {
     gameState,
     players,
@@ -59,9 +58,9 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     isPlayerReady,
     readyStatus,
     isMovePending,
+    playerDisconnected,
     makeMove,
     setPlayerReady,
-    sendChatMessage,
   } = useOnlineGame({ socket, roomCode, playerName, playerSymbol });
 
   const [isCopied, setIsCopied] = useState(false);
@@ -120,7 +119,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     router.push("/");
   };
 
-  const handleNewChatMessage = (message: ChatMessage) => {
+  const handleNewChatMessage = () => {
     // Chat messages are now handled by the useOnlineGame hook
     // This function is kept for compatibility with FloatingChat
   };
@@ -150,11 +149,17 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                   <div className="flex items-center gap-2">
                     {isConnected ? (
                       <Wifi className="h-5 w-5 text-green-500" />
+                    ) : isConnecting ? (
+                      <Wifi className="h-5 w-5 animate-pulse text-yellow-500" />
                     ) : (
                       <WifiOff className="h-5 w-5 text-red-500" />
                     )}
                     <span className="text-sm">
-                      {isConnected ? "Connected" : "Disconnected"}
+                      {isConnected
+                        ? "Connected"
+                        : isConnecting
+                          ? "Connecting..."
+                          : "Disconnected"}
                     </span>
                   </div>
 
@@ -241,10 +246,17 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
             </CardContent>
           </Card>
 
-          {connectionError && (
+          {(playerDisconnected || (connectionError && !isConnecting)) && (
             <Card className="mb-8 border-red-500">
               <CardContent>
-                <p className="text-center text-red-500">{connectionError}</p>
+                <p className="text-center text-lg text-red-500">
+                  Other player disconnected
+                </p>
+                <div className="mt-4 flex justify-center">
+                  <Button onClick={handleStop} size="lg">
+                    Back to Home
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -262,160 +274,162 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
             </Card>
           )}
 
-          {!waitingForPlayer && !connectionError && (
-            <Card>
-              <CardHeader>
-                <div className="text-center">
-                  {gameState.winner ? (
-                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-green-600">
-                      <Trophy className="h-6 w-6" />
-                      {winner?.name || "Unknown"} Wins!
-                    </p>
-                  ) : gameState.isDraw ? (
-                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-yellow-600">
-                      <HandHeart className="h-6 w-6" />
-                      It&apos;s a Draw!
-                    </p>
-                  ) : (
-                    <div>
-                      <p className="text-xl font-semibold">
-                        {gameStatus.title}
+          {(!waitingForPlayer || isConnecting) &&
+            !playerDisconnected &&
+            !(connectionError && !isConnecting) && (
+              <Card>
+                <CardHeader>
+                  <div className="text-center">
+                    {gameState.winner ? (
+                      <p className="flex items-center justify-center gap-2 text-xl font-semibold text-green-600">
+                        <Trophy className="h-6 w-6" />
+                        {winner?.name || "Unknown"} Wins!
                       </p>
-                      <p className="text-muted-foreground text-sm">
-                        {gameStatus.subtitle}
+                    ) : gameState.isDraw ? (
+                      <p className="flex items-center justify-center gap-2 text-xl font-semibold text-yellow-600">
+                        <HandHeart className="h-6 w-6" />
+                        It&apos;s a Draw!
                       </p>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="mx-auto mb-8 grid max-w-sm grid-cols-3 gap-2">
-                  {gameState.board.map((cell, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleCellClick(index)}
-                      className={`bg-secondary hover:bg-secondary/80 flex aspect-square items-center justify-center rounded-lg text-4xl font-bold transition-colors ${
-                        !canMakeMove(
-                          gameState,
-                          index,
-                          currentPlayerSymbol,
-                          isConnected,
-                          isMovePending
-                        )
-                          ? "cursor-not-allowed opacity-50"
-                          : "cursor-pointer"
-                      }`}
-                      disabled={
-                        !canMakeMove(
-                          gameState,
-                          index,
-                          currentPlayerSymbol,
-                          isConnected,
-                          isMovePending
-                        )
-                      }
-                    >
-                      {cell}
-                    </button>
-                  ))}
-                </div>
-
-                {showRoundEnd && (
-                  <div className="bg-secondary/50 space-y-4 rounded-lg p-6 text-center">
-                    <p className="text-lg font-medium">Round Complete!</p>
-
-                    {readyStatus.readyCount === 2 ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <CheckCircle className="h-5 w-5 animate-pulse text-green-600" />
-                          <p className="font-medium text-green-600">
-                            Starting new round...
-                          </p>
-                        </div>
-                      </div>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
-                            {isPlayerReady ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <User className="text-muted-foreground h-4 w-4" />
-                            )}
-                            <span className="text-xs">
-                              {formatPlayerName(playerName)}{" "}
-                              {isPlayerReady ? "Ready" : "Not Ready"}
-                            </span>
-                          </div>
-                          <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
-                            {(() => {
-                              const opponentReady = isPlayerReady
-                                ? readyStatus.readyCount === 2
-                                : readyStatus.readyCount >= 1;
+                      <div>
+                        <p className="text-xl font-semibold">
+                          {gameStatus.title}
+                        </p>
+                        <p className="text-muted-foreground text-sm">
+                          {gameStatus.subtitle}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="mx-auto mb-8 grid max-w-sm grid-cols-3 gap-2">
+                    {gameState.board.map((cell, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleCellClick(index)}
+                        className={`bg-secondary hover:bg-secondary/80 flex aspect-square items-center justify-center rounded-lg text-4xl font-bold transition-colors ${
+                          !canMakeMove(
+                            gameState,
+                            index,
+                            currentPlayerSymbol,
+                            isConnected,
+                            isMovePending
+                          )
+                            ? "cursor-not-allowed opacity-50"
+                            : "cursor-pointer"
+                        }`}
+                        disabled={
+                          !canMakeMove(
+                            gameState,
+                            index,
+                            currentPlayerSymbol,
+                            isConnected,
+                            isMovePending
+                          )
+                        }
+                      >
+                        {cell}
+                      </button>
+                    ))}
+                  </div>
 
-                              if (opponentReady) {
-                                return (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                );
-                              } else {
-                                return (
-                                  <User className="text-muted-foreground h-4 w-4" />
-                                );
-                              }
-                            })()}
-                            <span className="text-xs">
-                              {opponent?.name || "Waiting..."}{" "}
+                  {showRoundEnd && (
+                    <div className="bg-secondary/50 space-y-4 rounded-lg p-6 text-center">
+                      <p className="text-lg font-medium">Round Complete!</p>
+
+                      {readyStatus.readyCount === 2 ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <CheckCircle className="h-5 w-5 animate-pulse text-green-600" />
+                            <p className="font-medium text-green-600">
+                              Starting new round...
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
+                              {isPlayerReady ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <User className="text-muted-foreground h-4 w-4" />
+                              )}
+                              <span className="text-xs">
+                                {formatPlayerName(playerName)}{" "}
+                                {isPlayerReady ? "Ready" : "Not Ready"}
+                              </span>
+                            </div>
+                            <div className="bg-background/50 flex items-center justify-center gap-2 rounded p-2">
                               {(() => {
                                 const opponentReady = isPlayerReady
                                   ? readyStatus.readyCount === 2
                                   : readyStatus.readyCount >= 1;
-                                return opponentReady ? "Ready" : "Not Ready";
+
+                                if (opponentReady) {
+                                  return (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  );
+                                } else {
+                                  return (
+                                    <User className="text-muted-foreground h-4 w-4" />
+                                  );
+                                }
                               })()}
-                            </span>
+                              <span className="text-xs">
+                                {opponent?.name || "Waiting..."}{" "}
+                                {(() => {
+                                  const opponentReady = isPlayerReady
+                                    ? readyStatus.readyCount === 2
+                                    : readyStatus.readyCount >= 1;
+                                  return opponentReady ? "Ready" : "Not Ready";
+                                })()}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex justify-center gap-4">
-                          <Button
-                            onClick={handlePlayerReady}
-                            size="lg"
-                            disabled={isPlayerReady}
-                            className={isPlayerReady ? "opacity-75" : ""}
-                          >
-                            {isPlayerReady ? (
-                              <>
-                                <Clock className="mr-2 h-4 w-4 animate-pulse" />
-                                Continue ({readyStatus.readyCount}/2)
-                              </>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" />
-                                Continue
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            onClick={handleStop}
-                            variant="outline"
-                            size="lg"
-                          >
-                            Back to Home
-                          </Button>
-                        </div>
+                          <div className="flex justify-center gap-4">
+                            <Button
+                              onClick={handlePlayerReady}
+                              size="lg"
+                              disabled={isPlayerReady}
+                              className={isPlayerReady ? "opacity-75" : ""}
+                            >
+                              {isPlayerReady ? (
+                                <>
+                                  <Clock className="mr-2 h-4 w-4 animate-pulse" />
+                                  Continue ({readyStatus.readyCount}/2)
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="mr-2 h-4 w-4" />
+                                  Continue
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={handleStop}
+                              variant="outline"
+                              size="lg"
+                            >
+                              Back to Home
+                            </Button>
+                          </div>
 
-                        {isPlayerReady && (
-                          <p className="text-muted-foreground animate-in fade-in text-xs duration-500">
-                            Waiting for {opponent?.name || "opponent"} to
-                            continue...
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                          {isPlayerReady && (
+                            <p className="text-muted-foreground animate-in fade-in text-xs duration-500">
+                              Waiting for {opponent?.name || "opponent"} to
+                              continue...
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           <FloatingChat
             socket={socket}
             roomCode={roomCode}

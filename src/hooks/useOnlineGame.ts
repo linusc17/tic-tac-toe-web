@@ -44,6 +44,7 @@ export const useOnlineGame = ({
     playerReady: "",
   });
   const [isMovePending, setIsMovePending] = useState(false);
+  const [playerDisconnected, setPlayerDisconnected] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
@@ -101,6 +102,7 @@ export const useOnlineGame = ({
     // Player disconnected event
     socket.on("player_disconnected", () => {
       setChatMessages([]);
+      setPlayerDisconnected(true);
       toast.error("Other player disconnected");
     });
 
@@ -191,6 +193,7 @@ export const useOnlineGame = ({
     isPlayerReady,
     readyStatus,
     isMovePending,
+    playerDisconnected,
     makeMove,
     setPlayerReady,
     sendChatMessage,
