@@ -74,7 +74,8 @@ export default function RegisterPage() {
       return;
     }
 
-    const { confirmPassword: _, ...registrationData } = formData;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { confirmPassword, ...registrationData } = formData;
     const success = await register(registrationData);
     if (success) {
       router.push("/");

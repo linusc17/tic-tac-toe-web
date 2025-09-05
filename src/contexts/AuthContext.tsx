@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { toast } from "sonner";
 
 interface User {
@@ -164,13 +170,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     toast.success("Logged out successfully");
-  };
+  }, []);
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
@@ -180,7 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -202,7 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("Error refreshing user:", error);
     }
-  };
+  }, [token, logout, API_URL]);
 
   // Listen for custom events to refresh user stats
   React.useEffect(() => {
@@ -213,7 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     window.addEventListener("userStatsUpdated", handleStatsUpdate);
     return () =>
       window.removeEventListener("userStatsUpdated", handleStatsUpdate);
-  }, [token]);
+  }, [token, refreshUser]);
 
   const value: AuthContextType = {
     user,

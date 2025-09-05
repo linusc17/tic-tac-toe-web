@@ -1,11 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { GameSession } from "@/src/types/game";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gamepad2, Play, Loader2, CheckCircle } from "lucide-react";
+import {
+  Gamepad2,
+  Play,
+  Loader2,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  History,
+} from "lucide-react";
 import { toast } from "sonner";
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+  nextPage: number | null;
+  prevPage: number | null;
+}
 
 interface HomePageProps {
   onStartNewGame: () => void;
@@ -16,27 +35,63 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSplitButtons, setShowSplitButtons] = useState(false);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAllSessions, setShowAllSessions] = useState(false);
+
+  const fetchGameSessions = useCallback(
+    async (page = 1, limit = showAllSessions ? 10 : 6) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/games?${params}`
+        );
+        if (response.ok) {
+          const result = await response.json();
+          // Handle nested data structure: { data: { data: [...] }, pagination: ... }
+          const sessions =
+            result.data?.data || result.data || result.sessions || result || [];
+          setGameSessions(Array.isArray(sessions) ? sessions : []);
+          setPagination(result.pagination || null);
+        } else {
+          toast.error("Failed to load recent games");
+        }
+      } catch (error) {
+        console.error("Failed to fetch game sessions:", error);
+        toast.error("Failed to load recent games");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showAllSessions]
+  );
 
   useEffect(() => {
     fetchGameSessions();
-  }, []);
+  }, [fetchGameSessions]);
 
-  const fetchGameSessions = async () => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/games`
-      );
-      if (response.ok) {
-        const result = await response.json();
-        setGameSessions(result.data || []);
-      } else {
-        toast.error("Failed to load recent games");
-      }
-    } catch (error) {
-      console.error("Failed to fetch game sessions:", error);
-      toast.error("Failed to load recent games");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (showAllSessions) {
+      fetchGameSessions(currentPage);
+    }
+  }, [currentPage, showAllSessions, fetchGameSessions]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const toggleShowAllSessions = () => {
+    setShowAllSessions(!showAllSessions);
+    if (!showAllSessions) {
+      setCurrentPage(1);
+      fetchGameSessions(1, 10);
+    } else {
+      fetchGameSessions(1, 6);
     }
   };
 
@@ -99,9 +154,19 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
         </div>
 
         <div className="mx-auto max-w-6xl">
-          <h2 className="mb-6 text-2xl font-semibold">
-            Previous Game Sessions
-          </h2>
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Previous Game Sessions</h2>
+            {!loading && gameSessions.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={toggleShowAllSessions}
+                className="gap-2"
+              >
+                <History className="h-4 w-4" />
+                {showAllSessions ? "Show Recent Only" : "View All Sessions"}
+              </Button>
+            )}
+          </div>
 
           {loading ? (
             <div className="py-12 text-center">
@@ -119,76 +184,153 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {gameSessions.map(session => (
-                <Card
-                  key={session.id}
-                  className="transition-shadow hover:shadow-md"
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">
-                        <div className="flex items-center gap-2">
-                          <span className="flex items-center gap-1">
-                            {session.player1Name}
-                            {session.player1Id && (
-                              <CheckCircle className="h-4 w-4 text-blue-500" />
-                            )}
-                          </span>
-                          <span>vs</span>
-                          <span className="flex items-center gap-1">
-                            {session.player2Name}
-                            {session.player2Id && (
-                              <CheckCircle className="h-4 w-4 text-blue-500" />
-                            )}
-                          </span>
-                        </div>
-                      </CardTitle>
-                      <span className="text-muted-foreground text-sm">
-                        {formatDate(session.createdAt)}
-                      </span>
-                    </div>
-                  </CardHeader>
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {gameSessions.map(session => (
+                  <Card
+                    key={session.id}
+                    className="transition-shadow hover:shadow-md"
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-lg">
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                              {session.player1Name}
+                              {session.player1Id && (
+                                <CheckCircle className="h-4 w-4 text-blue-500" />
+                              )}
+                            </span>
+                            <span>vs</span>
+                            <span className="flex items-center gap-1">
+                              {session.player2Name}
+                              {session.player2Id && (
+                                <CheckCircle className="h-4 w-4 text-blue-500" />
+                              )}
+                            </span>
+                          </div>
+                        </CardTitle>
+                        <span className="text-muted-foreground text-sm">
+                          {formatDate(session.createdAt)}
+                        </span>
+                      </div>
+                    </CardHeader>
 
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="flex items-center gap-1">
-                        {session.player1Name}
-                        {session.player1Id && (
-                          <CheckCircle className="h-3 w-3 text-blue-500" />
-                        )}
-                        <span className="ml-1">Wins:</span>
-                      </span>
-                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                        {session.player1Wins}
-                      </span>
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="flex items-center gap-1">
+                          {session.player1Name}
+                          {session.player1Id && (
+                            <CheckCircle className="h-3 w-3 text-blue-500" />
+                          )}
+                          <span className="ml-1">Wins:</span>
+                        </span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                          {session.player1Wins}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="flex items-center gap-1">
+                          {session.player2Name}
+                          {session.player2Id && (
+                            <CheckCircle className="h-3 w-3 text-blue-500" />
+                          )}
+                          <span className="ml-1">Wins:</span>
+                        </span>
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                          {session.player2Wins}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Draws:</span>
+                        <span className="text-muted-foreground font-medium">
+                          {session.draws}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span>Total Rounds:</span>
+                        <span className="font-medium">
+                          {session.totalRounds}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {showAllSessions && pagination && pagination.totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center space-y-4 sm:flex-row sm:justify-between sm:space-y-0">
+                  <div className="text-muted-foreground text-sm">
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                    {Math.min(
+                      pagination.page * pagination.limit,
+                      pagination.total
+                    )}{" "}
+                    of {pagination.total} sessions
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={!pagination.hasPrev}
+                      className="gap-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from(
+                        { length: Math.min(5, pagination.totalPages) },
+                        (_, i) => {
+                          let pageNum;
+                          if (pagination.totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (pagination.page <= 3) {
+                            pageNum = i + 1;
+                          } else if (
+                            pagination.page >
+                            pagination.totalPages - 3
+                          ) {
+                            pageNum = pagination.totalPages - 4 + i;
+                          } else {
+                            pageNum = pagination.page - 2 + i;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={
+                                currentPage === pageNum ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageChange(pageNum)}
+                              className="h-8 w-8 p-0"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        }
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="flex items-center gap-1">
-                        {session.player2Name}
-                        {session.player2Id && (
-                          <CheckCircle className="h-3 w-3 text-blue-500" />
-                        )}
-                        <span className="ml-1">Wins:</span>
-                      </span>
-                      <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {session.player2Wins}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Draws:</span>
-                      <span className="text-muted-foreground font-medium">
-                        {session.draws}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span>Total Rounds:</span>
-                      <span className="font-medium">{session.totalRounds}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={!pagination.hasNext}
+                      className="gap-1"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
