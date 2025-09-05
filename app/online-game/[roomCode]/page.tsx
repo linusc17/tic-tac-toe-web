@@ -19,6 +19,7 @@ import {
 import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
 import { ChatMessage } from "@/src/types/chat";
+import { GameSession } from "@/src/types/game";
 
 interface OnlineGameProps {
   params: Promise<{ roomCode: string }>;
@@ -59,13 +60,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [connectionError, setConnectionError] = useState("");
   const [showRoundEnd, setShowRoundEnd] = useState(false);
-  const [gameSession, setGameSession] = useState<any>(null);
-  const [roundStats, setRoundStats] = useState({
-    player1Wins: 0,
-    player2Wins: 0,
-    draws: 0,
-    totalRounds: 0,
-  });
+  const [gameSession, setGameSession] = useState<GameSession | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [readyStatus, setReadyStatus] = useState({
@@ -110,7 +105,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
     newSocket.on(
       "game_ready",
-      (data: { players: Player[]; gameState: GameState; gameSession: any }) => {
+      (data: { players: Player[]; gameState: GameState; gameSession: GameSession | null }) => {
         setPlayers(data.players);
         setGameState(data.gameState);
         if (data.gameSession) {
@@ -126,7 +121,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
         position: number;
         player: string;
         gameState: GameState;
-        gameSession?: any;
+        gameSession?: GameSession;
       }) => {
         setGameState(data.gameState);
         if (data.gameSession) {
@@ -145,7 +140,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
     newSocket.on(
       "new_round_started",
-      (data: { gameState: GameState; players: Player[]; gameSession: any }) => {
+      (data: { gameState: GameState; players: Player[]; gameSession: GameSession | null }) => {
         setGameState(data.gameState);
         setPlayers(data.players);
         if (data.gameSession) {
