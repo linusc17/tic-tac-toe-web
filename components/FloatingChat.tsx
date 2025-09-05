@@ -234,7 +234,10 @@ export default function FloatingChat({
                       )}
                       <p className="text-sm">{msg.message}</p>
                       <p className="text-xs opacity-70 mt-1">
-                        {new Date(msg.timestamp).toLocaleTimeString()}
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -245,7 +248,7 @@ export default function FloatingChat({
 
             {/* Message Input */}
             <div className="p-4 border-t">
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Input
                   placeholder="Type a message..."
                   value={newMessage}

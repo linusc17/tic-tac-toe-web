@@ -23,6 +23,7 @@ export default function GamePage({ params }: GamePageProps) {
   });
   const [loading, setLoading] = useState(true);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
+  const [player1IsX, setPlayer1IsX] = useState(true);
 
   const fetchGameSession = useCallback(async () => {
     try {
@@ -96,10 +97,16 @@ export default function GamePage({ params }: GamePageProps) {
       totalRounds: gameSession.totalRounds + 1,
     };
 
-    if (winner === "X") {
-      updates.player1Wins = gameSession.player1Wins + 1;
-    } else if (winner === "O") {
-      updates.player2Wins = gameSession.player2Wins + 1;
+    if (winner) {
+      const winnerIsX = winner === "X";
+      const player1Won =
+        (player1IsX && winnerIsX) || (!player1IsX && !winnerIsX);
+
+      if (player1Won) {
+        updates.player1Wins = gameSession.player1Wins + 1;
+      } else {
+        updates.player2Wins = gameSession.player2Wins + 1;
+      }
     } else if (isDraw) {
       updates.draws = gameSession.draws + 1;
     }
@@ -128,6 +135,7 @@ export default function GamePage({ params }: GamePageProps) {
   const handleContinue = async () => {
     try {
       await updateGameSession(gameState.winner, gameState.isDraw);
+      setPlayer1IsX(!player1IsX);
       setGameState({
         board: Array(9).fill(null),
         currentPlayer: "X",
@@ -171,14 +179,17 @@ export default function GamePage({ params }: GamePageProps) {
   }
 
   const getCurrentPlayerName = () => {
-    return gameState.currentPlayer === "X"
+    const isCurrentPlayerX = gameState.currentPlayer === "X";
+    return (player1IsX && isCurrentPlayerX) ||
+      (!player1IsX && !isCurrentPlayerX)
       ? gameSession.player1Name
       : gameSession.player2Name;
   };
 
   const getWinnerName = () => {
     if (!gameState.winner) return null;
-    return gameState.winner === "X"
+    const isWinnerX = gameState.winner === "X";
+    return (player1IsX && isWinnerX) || (!player1IsX && !isWinnerX)
       ? gameSession.player1Name
       : gameSession.player2Name;
   };
@@ -206,7 +217,7 @@ export default function GamePage({ params }: GamePageProps) {
               <div className="grid grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    {gameSession.player1Name} Wins
+                    {gameSession.player1Name} ({player1IsX ? "X" : "O"}) Wins
                   </p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                     {gameSession.player1Wins}
@@ -214,7 +225,7 @@ export default function GamePage({ params }: GamePageProps) {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    {gameSession.player2Name} Wins
+                    {gameSession.player2Name} ({player1IsX ? "O" : "X"}) Wins
                   </p>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {gameSession.player2Wins}

@@ -206,7 +206,7 @@ export default function OnlinePage() {
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
                   <strong>How to play online:</strong>

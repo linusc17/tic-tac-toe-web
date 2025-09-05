@@ -11,6 +11,10 @@ import {
   WifiOff,
   Trophy,
   HandHeart,
+  Play,
+  Clock,
+  CheckCircle,
+  User,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import FloatingChat from "@/components/FloatingChat";
@@ -55,6 +59,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [connectionError, setConnectionError] = useState("");
   const [showRoundEnd, setShowRoundEnd] = useState(false);
+  const [gameSession, setGameSession] = useState<any>(null);
   const [roundStats, setRoundStats] = useState({
     player1Wins: 0,
     player2Wins: 0,
@@ -62,6 +67,12 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     totalRounds: 0,
   });
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [readyStatus, setReadyStatus] = useState({
+    readyCount: 0,
+    totalPlayers: 2,
+    playerReady: "",
+  });
 
   useEffect(() => {
     const newSocket = io(
@@ -99,17 +110,28 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
     newSocket.on(
       "game_ready",
-      (data: { players: Player[]; gameState: GameState }) => {
+      (data: { players: Player[]; gameState: GameState; gameSession: any }) => {
         setPlayers(data.players);
         setGameState(data.gameState);
+        if (data.gameSession) {
+          setGameSession(data.gameSession);
+        }
         setWaitingForPlayer(false);
       }
     );
 
     newSocket.on(
       "move_made",
-      (data: { position: number; player: string; gameState: GameState }) => {
+      (data: {
+        position: number;
+        player: string;
+        gameState: GameState;
+        gameSession?: any;
+      }) => {
         setGameState(data.gameState);
+        if (data.gameSession) {
+          setGameSession(data.gameSession);
+        }
         if (data.gameState.winner || data.gameState.isDraw) {
           setShowRoundEnd(true);
         }
@@ -121,10 +143,30 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
       setIsConnected(false);
     });
 
-    newSocket.on("new_round_started", (data: { gameState: GameState }) => {
-      setGameState(data.gameState);
-      setShowRoundEnd(false);
-    });
+    newSocket.on(
+      "new_round_started",
+      (data: { gameState: GameState; players: Player[]; gameSession: any }) => {
+        setGameState(data.gameState);
+        setPlayers(data.players);
+        if (data.gameSession) {
+          setGameSession(data.gameSession);
+        }
+        setShowRoundEnd(false);
+        setIsPlayerReady(false);
+        setReadyStatus({ readyCount: 0, totalPlayers: 2, playerReady: "" });
+      }
+    );
+
+    newSocket.on(
+      "player_ready_status",
+      (data: {
+        readyCount: number;
+        totalPlayers: number;
+        playerReady: string;
+      }) => {
+        setReadyStatus(data);
+      }
+    );
 
     setSocket(newSocket);
 
@@ -139,7 +181,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
       !isConnected ||
       !gameState.isActive ||
       gameState.board[index] !== null ||
-      gameState.currentTurn !== playerSymbol
+      gameState.currentTurn !== getCurrentPlayerSymbol()
     ) {
       return;
     }
@@ -160,8 +202,18 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     navigator.clipboard.writeText(roomCode);
   };
 
+  const getCurrentPlayerSymbol = () => {
+    const currentPlayer = players.find(
+      (p) => p.name === decodeURIComponent(playerName)
+    );
+    return currentPlayer?.symbol || playerSymbol;
+  };
+
   const getOpponentName = () => {
-    return players.find((p) => p.symbol !== playerSymbol)?.name || "Waiting...";
+    const currentSymbol = getCurrentPlayerSymbol();
+    return (
+      players.find((p) => p.symbol !== currentSymbol)?.name || "Waiting..."
+    );
   };
 
   const getCurrentTurnName = () => {
@@ -177,33 +229,13 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     return winner?.name || "Unknown";
   };
 
-  const isMyTurn = () => gameState.currentTurn === playerSymbol;
+  const isMyTurn = () => gameState.currentTurn === getCurrentPlayerSymbol();
 
-  const handleContinue = () => {
-    const newStats = { ...roundStats, totalRounds: roundStats.totalRounds + 1 };
+  const handlePlayerReady = () => {
+    if (!socket || isPlayerReady) return;
 
-    if (gameState.winner === "X") {
-      newStats.player1Wins += 1;
-    } else if (gameState.winner === "O") {
-      newStats.player2Wins += 1;
-    } else if (gameState.isDraw) {
-      newStats.draws += 1;
-    }
-
-    setRoundStats(newStats);
-
-    setGameState({
-      board: Array(9).fill(null),
-      currentTurn: "X",
-      winner: null,
-      isDraw: false,
-      isActive: true,
-    });
-    setShowRoundEnd(false);
-
-    if (socket) {
-      socket.emit("new_round", roomCode);
-    }
+    setIsPlayerReady(true);
+    socket.emit("player_ready", roomCode);
   };
 
   const handleStop = () => {
@@ -265,7 +297,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      You ({playerSymbol})
+                      You ({getCurrentPlayerSymbol()})
                     </p>
                     <p className="text-lg font-semibold">
                       {decodeURIComponent(playerName)}
@@ -277,14 +309,14 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                   </div>
                 </div>
 
-                {roundStats.totalRounds > 0 && (
+                {gameSession && (
                   <div className="grid grid-cols-4 gap-2 text-center border-t pt-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Your Wins</p>
                       <p className="text-lg font-bold text-green-600">
-                        {playerSymbol === "X"
-                          ? roundStats.player1Wins
-                          : roundStats.player2Wins}
+                        {getCurrentPlayerSymbol() === "X"
+                          ? gameSession.player1Wins
+                          : gameSession.player2Wins}
                       </p>
                     </div>
                     <div>
@@ -292,21 +324,21 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                         Opponent Wins
                       </p>
                       <p className="text-lg font-bold text-blue-600">
-                        {playerSymbol === "X"
-                          ? roundStats.player2Wins
-                          : roundStats.player1Wins}
+                        {getCurrentPlayerSymbol() === "X"
+                          ? gameSession.player2Wins
+                          : gameSession.player1Wins}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Draws</p>
                       <p className="text-lg font-bold text-muted-foreground">
-                        {roundStats.draws}
+                        {gameSession.draws}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Rounds</p>
                       <p className="text-lg font-bold">
-                        {roundStats.totalRounds}
+                        {gameSession.totalRounds}
                       </p>
                     </div>
                   </div>
@@ -317,7 +349,7 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
 
           {connectionError && (
             <Card className="mb-8 border-red-500">
-              <CardContent className="pt-6">
+              <CardContent>
                 <p className="text-red-500 text-center">{connectionError}</p>
               </CardContent>
             </Card>
@@ -395,14 +427,93 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                 {showRoundEnd && (
                   <div className="text-center space-y-4 p-6 bg-secondary/50 rounded-lg">
                     <p className="text-lg font-medium">Round Complete!</p>
-                    <div className="flex gap-4 justify-center">
-                      <Button onClick={handleContinue} size="lg">
-                        Continue Playing
-                      </Button>
-                      <Button onClick={handleStop} variant="outline" size="lg">
-                        Back to Home
-                      </Button>
-                    </div>
+
+                    {readyStatus.readyCount === 2 ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-600 animate-pulse" />
+                          <p className="text-green-600 font-medium">
+                            Starting new round...
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center justify-center gap-2 p-2 bg-background/50 rounded">
+                            {isPlayerReady ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <User className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="text-xs">
+                              {decodeURIComponent(playerName)}{" "}
+                              {isPlayerReady ? "Ready" : "Not Ready"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-center gap-2 p-2 bg-background/50 rounded">
+                            {(() => {
+                              const opponentReady = isPlayerReady
+                                ? readyStatus.readyCount === 2
+                                : readyStatus.readyCount >= 1;
+
+                              if (opponentReady) {
+                                return (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                );
+                              } else {
+                                return (
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                );
+                              }
+                            })()}
+                            <span className="text-xs">
+                              {getOpponentName()}{" "}
+                              {(() => {
+                                const opponentReady = isPlayerReady
+                                  ? readyStatus.readyCount === 2
+                                  : readyStatus.readyCount >= 1;
+                                return opponentReady ? "Ready" : "Not Ready";
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 justify-center">
+                          <Button
+                            onClick={handlePlayerReady}
+                            size="lg"
+                            disabled={isPlayerReady}
+                            className={isPlayerReady ? "opacity-75" : ""}
+                          >
+                            {isPlayerReady ? (
+                              <>
+                                <Clock className="h-4 w-4 mr-2 animate-pulse" />
+                                Continue ({readyStatus.readyCount}/2)
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Continue
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={handleStop}
+                            variant="outline"
+                            size="lg"
+                          >
+                            Back to Home
+                          </Button>
+                        </div>
+
+                        {isPlayerReady && (
+                          <p className="text-xs text-muted-foreground animate-in fade-in duration-500">
+                            Waiting for {getOpponentName()} to continue...
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
