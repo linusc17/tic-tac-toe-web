@@ -102,6 +102,8 @@ export const formatPlayerName = (playerName: string): string => {
  * Get player statistics based on their position in the game session
  */
 interface GameSession {
+  player1Name: string;
+  player2Name: string;
   player1Wins: number;
   player2Wins: number;
   draws: number;
@@ -110,12 +112,15 @@ interface GameSession {
 
 export const getPlayerStats = (
   gameSession: GameSession | null,
-  playerSymbol: string,
+  players: Player[],
+  currentPlayerName: string,
   statType: "wins" | "losses"
 ) => {
   if (!gameSession) return 0;
 
-  const isPlayer1 = playerSymbol === "X";
+  // Determine if current player is player1 or player2 based on name in GameSession
+  const isPlayer1 =
+    formatPlayerName(currentPlayerName) === gameSession.player1Name;
 
   if (statType === "wins") {
     return isPlayer1 ? gameSession.player1Wins : gameSession.player2Wins;

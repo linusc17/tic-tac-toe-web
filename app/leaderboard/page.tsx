@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Info, Trophy, Target, GamepadIcon } from "lucide-react";
 
 interface LeaderboardUser {
   _id: string;
@@ -67,9 +68,9 @@ export default function LeaderboardPage() {
   const fetchLeaderboard = async () => {
     try {
       const params = new URLSearchParams({
-        sortBy: "wins",
+        sortBy: "winRate",
         limit: "10",
-        minGames: "0",
+        minGames: "3",
       });
 
       const response = await fetch(
@@ -138,36 +139,95 @@ export default function LeaderboardPage() {
   return (
     <div className="container mx-auto max-w-6xl p-4">
       <div className="space-y-6">
-        <div className="text-center">
+        <div className="py-4 text-center">
           <h1 className="mb-2 text-3xl font-bold">Leaderboard</h1>
           <p className="text-muted-foreground">
             Compete with players worldwide and climb the ranks!
           </p>
         </div>
 
-        {currentUser && userRank && (
-          <Card className="border-primary">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">Your Rank</h3>
-                  <p className="text-muted-foreground">
-                    {currentUser.username}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <Badge
-                    variant={getRankBadgeVariant(userRank.rank)}
-                    className="px-3 py-1 text-lg"
-                  >
-                    {getRankIcon(userRank.rank)} #{userRank.rank}
-                  </Badge>
-                  <div className="text-muted-foreground mt-1 text-sm">
-                    {userRank.user.wins}W • {userRank.user.losses}L •{" "}
-                    {userRank.user.draws}D
+        {/* Ranking Mechanics Explanation */}
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+          <CardContent>
+            <div className="flex items-start gap-3">
+              <Info className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="space-y-2">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                  🏆 How Rankings Work
+                </h3>
+                <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    <span>
+                      <strong>Primary:</strong> Win Rate (efficiency matters
+                      most)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GamepadIcon className="h-4 w-4" />
+                    <span>
+                      <strong>Secondary:</strong> Total Games (activity &
+                      credibility)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    <span>
+                      <strong>Tertiary:</strong> Total Wins (absolute
+                      performance)
+                    </span>
                   </div>
                 </div>
+                <div className="mt-3 rounded-md bg-blue-100 px-3 py-2 dark:bg-blue-900/50">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    📝 <strong>Qualification:</strong> Play at least 3 games to
+                    appear on the leaderboard
+                  </p>
+                </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {currentUser && (
+          <Card className="border-primary">
+            <CardContent>
+              {userRank ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Your Rank</h3>
+                    <p className="text-muted-foreground">
+                      {currentUser.username}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge
+                      variant={getRankBadgeVariant(userRank.rank)}
+                      className="px-3 py-1 text-lg"
+                    >
+                      {getRankIcon(userRank.rank)} #{userRank.rank}
+                    </Badge>
+                    <div className="text-muted-foreground mt-1 text-sm">
+                      {userRank.user.wins}W • {userRank.user.losses}L •{" "}
+                      {userRank.user.draws}D
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                    <GamepadIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Not Ranked Yet</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">
+                    Play at least 3 games to appear on the leaderboard and get
+                    your rank!
+                  </p>
+                  <Button asChild size="sm">
+                    <Link href="/online">Start Playing</Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -175,9 +235,13 @@ export default function LeaderboardPage() {
         {leaderboardData && (
           <Card>
             <CardHeader>
-              <CardTitle>Top 10 Rankings</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                Top 10 Rankings
+              </CardTitle>
               <CardDescription>
                 Showing the top {leaderboardData.leaderboard.length} players
+                (minimum 3 games played)
               </CardDescription>
             </CardHeader>
             <CardContent>

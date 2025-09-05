@@ -224,7 +224,8 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                       <p className="text-lg font-bold text-green-600">
                         {getPlayerStats(
                           gameSession,
-                          currentPlayerSymbol,
+                          players,
+                          formatPlayerName(playerName),
                           "wins"
                         )}
                       </p>
@@ -236,7 +237,8 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                       <p className="text-lg font-bold text-blue-600">
                         {getPlayerStats(
                           gameSession,
-                          currentPlayerSymbol,
+                          players,
+                          formatPlayerName(playerName),
                           "losses"
                         )}
                       </p>

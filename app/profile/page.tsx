@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { User, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 interface UserStats {
   _id: string;
@@ -37,7 +38,6 @@ export default function ProfilePage() {
     username: "",
     email: "",
     bio: "",
-    avatar: "",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -91,7 +91,6 @@ export default function ProfilePage() {
           username: userData.username || "",
           email: userData.email || "",
           bio: userData.bio || "",
-          avatar: userData.avatar || "",
         });
       } else if (profileResponse.status === 401) {
         localStorage.removeItem("token");
@@ -287,9 +286,11 @@ export default function ProfilePage() {
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative h-24 w-24">
                     {user.avatar ? (
-                      <img
+                      <Image
                         src={user.avatar}
                         alt={`${user.username}'s avatar`}
+                        width={96}
+                        height={96}
                         className="ring-border h-24 w-24 rounded-full object-cover ring-2"
                         onError={e => {
                           // Fallback to icon if image fails to load
@@ -300,6 +301,8 @@ export default function ProfilePage() {
                             nextElement.style.display = "flex";
                           }
                         }}
+                        priority
+                        unoptimized={user.avatar.startsWith('data:')}
                       />
                     ) : null}
                     <div
@@ -424,17 +427,6 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="avatar">Avatar URL (optional)</Label>
-                  <Input
-                    id="avatar"
-                    name="avatar"
-                    type="url"
-                    value={formData.avatar}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                </div>
 
                 <div className="flex gap-2">
                   <Button type="submit" disabled={isUpdating}>
@@ -449,7 +441,6 @@ export default function ProfilePage() {
                         username: user.username || "",
                         email: user.email || "",
                         bio: user.bio || "",
-                        avatar: user.avatar || "",
                       });
                     }}
                   >
