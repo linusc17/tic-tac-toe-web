@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { toast } from "sonner";
+import { useGlobalServerState } from "@/src/hooks/useGlobalServerState";
 
 interface User {
   _id: string;
@@ -28,6 +29,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  loadingMessage: string;
   login: (credentials: { login: string; password: string }) => Promise<boolean>;
   register: (userData: {
     username: string;
@@ -57,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { loadingState, makeRequest } = useGlobalServerState();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -89,7 +92,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const data = await makeRequest<{
+        data: { token: string; user: User };
+      }>(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,9 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify(credentials),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data) {
         const { token: newToken, user: newUser } = data.data;
 
         setToken(newToken);
@@ -111,12 +114,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         toast.success("Login successful!");
         return true;
       } else {
-        toast.error(data.message || "Login failed");
+        toast.error("Login failed");
         return false;
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
       return false;
     } finally {
       setLoading(false);
@@ -130,7 +137,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const data = await makeRequest<{
+        data: { token: string; user: User };
+      }>(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,9 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify(userData),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data) {
         const { token: newToken, user: newUser } = data.data;
 
         setToken(newToken);
@@ -152,18 +159,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         toast.success("Registration successful! Welcome to Tic Tac Toe!");
         return true;
       } else {
-        if (data.errors && data.errors.length > 0) {
-          data.errors.forEach((error: { msg: string }) => {
-            toast.error(error.msg);
-          });
-        } else {
-          toast.error(data.message || "Registration failed");
-        }
+        toast.error("Registration failed");
         return false;
       }
     } catch (error) {
       console.error("Registration error:", error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
       return false;
     } finally {
       setLoading(false);
@@ -190,25 +195,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/profile`, {
+      const data = await makeRequest<{
+        data: { user: User };
+      }>(`${API_URL}/api/auth/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
         const updatedUser = data.data.user;
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
-      } else if (response.status === 401) {
-        // Token is invalid, logout
-        logout();
       }
     } catch (error) {
       console.error("Error refreshing user:", error);
+      if (error instanceof Error && error.message.includes("401")) {
+        // Token is invalid, logout
+        logout();
+      }
     }
-  }, [token, logout, API_URL]);
+  }, [token, logout, API_URL, makeRequest]);
 
   // Listen for custom events to refresh user stats
   React.useEffect(() => {
@@ -224,7 +231,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     token,
-    loading,
+    loading: loading || loadingState.isLoading,
+    loadingMessage: loadingState.loadingMessage,
     login,
     register,
     logout,

@@ -14,6 +14,7 @@ import {
   History,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGlobalServerState } from "@/src/hooks/useGlobalServerState";
 
 interface PaginationInfo {
   page: number;
@@ -39,12 +40,13 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
+  const { loadingState, makeRequest } = useGlobalServerState();
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const fetchGameSessions = useCallback(
@@ -52,10 +54,10 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
       const getItemsPerPage = () => {
         if (!showAllSessions) return 6; // Keep original behavior for recent sessions
         if (windowWidth >= 1024) return 9; // Large screens (lg): 3 columns × 3 rows = 9
-        if (windowWidth >= 768) return 8;  // Medium screens (md): 2 columns × 4 rows = 8  
+        if (windowWidth >= 768) return 8; // Medium screens (md): 2 columns × 4 rows = 8
         return 6; // Small screens: 1 column × 6 rows = 6
       };
-      
+
       const itemsPerPage = limit || getItemsPerPage();
       try {
         setLoading(true);
@@ -64,16 +66,14 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
           limit: itemsPerPage.toString(),
         });
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/games?${params}`
-        );
-        if (response.ok) {
-          const result = await response.json();
-          // Handle nested data structure: { data: { data: [...] }, pagination: ... }
-          const sessions =
-            result.data?.data || result.data || result.sessions || result || [];
-          setGameSessions(Array.isArray(sessions) ? sessions : []);
-          setPagination(result.pagination || null);
+        const result = await makeRequest<{
+          data: { data: GameSession[]; total: number };
+          pagination: PaginationInfo;
+        }>(`${process.env.NEXT_PUBLIC_API_URL}/api/games?${params}`);
+
+        if (result) {
+          setGameSessions(result.data.data);
+          setPagination(result.pagination);
         } else {
           toast.error("Failed to load recent games");
         }
@@ -84,7 +84,7 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
         setLoading(false);
       }
     },
-[showAllSessions, windowWidth]
+    [showAllSessions, windowWidth, makeRequest]
   );
 
   useEffect(() => {
@@ -187,11 +187,13 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
             )}
           </div>
 
-          {loading ? (
+          {loading || loadingState.isLoading ? (
             <div className="py-12 text-center">
               <Loader2 className="text-primary mx-auto h-8 w-8 animate-spin" />
               <p className="text-muted-foreground mt-4">
-                Loading game sessions...
+                {loadingState.isLoading
+                  ? loadingState.loadingMessage
+                  : "Loading game sessions..."}
               </p>
             </div>
           ) : gameSessions.length === 0 ? (
