@@ -130,6 +130,134 @@ export const getPlayerStats = (
 };
 
 /**
+ * Winning line interface for animations
+ */
+export interface WinningLine {
+  positions: [number, number, number];
+  direction: "horizontal" | "vertical" | "diagonal";
+  lineIndex: number;
+}
+
+/**
+ * Check for winning combinations and return winner with line details
+ */
+export const checkWinnerWithLine = (
+  board: (string | null)[]
+): {
+  winner: string | null;
+  winningLine: WinningLine | null;
+} => {
+  const lines = [
+    // Horizontal lines
+    {
+      positions: [0, 1, 2] as [number, number, number],
+      direction: "horizontal" as const,
+      lineIndex: 0,
+    },
+    {
+      positions: [3, 4, 5] as [number, number, number],
+      direction: "horizontal" as const,
+      lineIndex: 1,
+    },
+    {
+      positions: [6, 7, 8] as [number, number, number],
+      direction: "horizontal" as const,
+      lineIndex: 2,
+    },
+    // Vertical lines
+    {
+      positions: [0, 3, 6] as [number, number, number],
+      direction: "vertical" as const,
+      lineIndex: 0,
+    },
+    {
+      positions: [1, 4, 7] as [number, number, number],
+      direction: "vertical" as const,
+      lineIndex: 1,
+    },
+    {
+      positions: [2, 5, 8] as [number, number, number],
+      direction: "vertical" as const,
+      lineIndex: 2,
+    },
+    // Diagonal lines
+    {
+      positions: [0, 4, 8] as [number, number, number],
+      direction: "diagonal" as const,
+      lineIndex: 0,
+    },
+    {
+      positions: [2, 4, 6] as [number, number, number],
+      direction: "diagonal" as const,
+      lineIndex: 1,
+    },
+  ];
+
+  for (const line of lines) {
+    const [a, b, c] = line.positions;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return {
+        winner: board[a],
+        winningLine: line,
+      };
+    }
+  }
+
+  return { winner: null, winningLine: null };
+};
+
+/**
+ * Get SVG line coordinates for winning line animation
+ */
+export const getWinningLineCoordinates = (
+  winningLine: WinningLine,
+  cellSize: number = 100,
+  gap: number = 8
+): { x1: number; y1: number; x2: number; y2: number } => {
+  const cellWithGap = cellSize + gap;
+  const cellCenter = cellSize / 2;
+
+  switch (winningLine.direction) {
+    case "horizontal":
+      const y = winningLine.lineIndex * cellWithGap + cellCenter;
+      return {
+        x1: cellCenter,
+        y1: y,
+        x2: cellSize * 3 + gap * 2 - cellCenter,
+        y2: y,
+      };
+
+    case "vertical":
+      const x = winningLine.lineIndex * cellWithGap + cellCenter;
+      return {
+        x1: x,
+        y1: cellCenter,
+        x2: x,
+        y2: cellSize * 3 + gap * 2 - cellCenter,
+      };
+
+    case "diagonal":
+      if (winningLine.lineIndex === 0) {
+        // Top-left to bottom-right
+        return {
+          x1: cellCenter,
+          y1: cellCenter,
+          x2: cellSize * 3 + gap * 2 - cellCenter,
+          y2: cellSize * 3 + gap * 2 - cellCenter,
+        };
+      } else {
+        // Top-right to bottom-left
+        return {
+          x1: cellSize * 3 + gap * 2 - cellCenter,
+          y1: cellCenter,
+          x2: cellCenter,
+          y2: cellSize * 3 + gap * 2 - cellCenter,
+        };
+      }
+  }
+};
+
+/**
  * Generate game status message
  */
 export const getGameStatusMessage = (

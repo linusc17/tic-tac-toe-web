@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,8 +19,13 @@ import {
 } from "lucide-react";
 import FloatingChat from "@/components/FloatingChat";
 import { toast } from "sonner";
-
-// Import our custom hooks and utilities
+import {
+  WinningLineOverlay,
+  AnimatedCell,
+  BoardContainer,
+  EmojiReactionContainer,
+} from "@/src/components/animations";
+import { EmojiBar } from "@/src/components/EmojiBar";
 import { useSocket } from "@/src/hooks/useSocket";
 import { useOnlineGame } from "@/src/hooks/useOnlineGame";
 import {
@@ -31,6 +36,7 @@ import {
   getGameStatusMessage,
   getPlayerStats,
   formatPlayerName,
+  checkWinnerWithLine,
 } from "@/src/utils/gameUtils";
 
 interface OnlineGameProps {
@@ -60,6 +66,9 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     playerDisconnected,
     makeMove,
     setPlayerReady,
+    sendEmojiReaction,
+    removeEmojiReaction,
+    emojiReactions,
   } = useOnlineGame({ socket, roomCode, playerName, playerSymbol });
 
   const [isCopied, setIsCopied] = useState(false);
@@ -122,6 +131,15 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
     // Chat messages are now handled by the useOnlineGame hook
     // This function is kept for compatibility with FloatingChat
   };
+
+  // Calculate winning line for animations
+  const winningLine = useMemo(() => {
+    if (gameState.winner) {
+      const result = checkWinnerWithLine(gameState.board);
+      return result.winningLine;
+    }
+    return null;
+  }, [gameState.board, gameState.winner]);
 
   return (
     <div className="bg-background text-foreground min-h-screen">
@@ -318,39 +336,62 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="mx-auto mb-8 grid max-w-sm grid-cols-3 gap-2">
-                    {gameState.board.map((cell, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleCellClick(index)}
-                        className={`bg-secondary hover:bg-secondary/80 flex aspect-square items-center justify-center rounded-lg text-4xl font-bold transition-colors ${
-                          !canMakeMove(
-                            gameState,
-                            index,
-                            currentPlayerSymbol,
-                            isConnected,
-                            isMovePending
-                          )
-                            ? "cursor-not-allowed opacity-50"
-                            : "cursor-pointer"
-                        }`}
-                        disabled={
-                          !canMakeMove(
-                            gameState,
-                            index,
-                            currentPlayerSymbol,
-                            isConnected,
-                            isMovePending
-                          )
-                        }
-                      >
-                        {cell}
-                      </button>
-                    ))}
-                  </div>
+                  <BoardContainer
+                    hasWinner={!!gameState.winner}
+                    isDraw={gameState.isDraw}
+                    className="mb-8"
+                  >
+                    <div className="relative mx-auto grid max-w-sm grid-cols-3 gap-2">
+                      {gameState.board.map((cell, index) => {
+                        const isWinning =
+                          winningLine?.positions.includes(index) || false;
+                        return (
+                          <AnimatedCell
+                            key={index}
+                            isWinning={isWinning}
+                            onClick={() => handleCellClick(index)}
+                            disabled={
+                              !canMakeMove(
+                                gameState,
+                                index,
+                                currentPlayerSymbol,
+                                isConnected,
+                                isMovePending
+                              )
+                            }
+                            className={
+                              !canMakeMove(
+                                gameState,
+                                index,
+                                currentPlayerSymbol,
+                                isConnected,
+                                isMovePending
+                              )
+                                ? "cursor-not-allowed"
+                                : "cursor-pointer"
+                            }
+                          >
+                            {cell}
+                          </AnimatedCell>
+                        );
+                      })}
+                      <WinningLineOverlay winningLine={winningLine} />
+                    </div>
+                  </BoardContainer>
+
+                  {/* Emoji Reaction Bar */}
+                  <EmojiBar
+                    onEmojiSelect={sendEmojiReaction}
+                    disabled={
+                      !isConnected ||
+                      waitingForPlayer ||
+                      playerDisconnected ||
+                      isMovePending
+                    }
+                  />
 
                   {showRoundEnd && (
-                    <div className="bg-secondary/50 space-y-4 rounded-lg p-6 text-center">
+                    <div className="bg-secondary/50 mt-4 space-y-4 rounded-lg p-6 text-center">
                       <p className="text-lg font-medium">Round Complete!</p>
 
                       {readyStatus.readyCount === 2 ? (
@@ -457,6 +498,12 @@ export default function OnlineGamePage({ params }: OnlineGameProps) {
           />
         </div>
       </div>
+
+      {/* Emoji Reactions */}
+      <EmojiReactionContainer
+        reactions={emojiReactions}
+        onRemoveReaction={removeEmojiReaction}
+      />
     </div>
   );
 }

@@ -5,6 +5,13 @@ import { GameSession } from "@/src/types/game";
 import { ChatMessage } from "@/src/types/chat";
 import { GameState, Player } from "@/src/utils/gameUtils";
 
+export interface EmojiReaction {
+  id: string;
+  emoji: string;
+  playerName: string;
+  timestamp: number;
+}
+
 interface UseOnlineGameProps {
   socket: Socket | null;
   roomCode: string;
@@ -45,6 +52,7 @@ export const useOnlineGame = ({
   });
   const [isMovePending, setIsMovePending] = useState(false);
   const [playerDisconnected, setPlayerDisconnected] = useState(false);
+  const [emojiReactions, setEmojiReactions] = useState<EmojiReaction[]>([]);
 
   useEffect(() => {
     if (!socket) return;
@@ -141,6 +149,11 @@ export const useOnlineGame = ({
       setChatMessages(prev => [...prev, message]);
     });
 
+    // Emoji reaction event
+    socket.on("emoji_reaction", (reaction: EmojiReaction) => {
+      setEmojiReactions(prev => [...prev, reaction]);
+    });
+
     return () => {
       socket.off("game_ready");
       socket.off("move_made");
@@ -148,6 +161,7 @@ export const useOnlineGame = ({
       socket.off("new_round_started");
       socket.off("player_ready_status");
       socket.off("new_message");
+      socket.off("emoji_reaction");
     };
   }, [socket, roomCode, playerName, playerSymbol]);
 
@@ -189,6 +203,23 @@ export const useOnlineGame = ({
     socket.emit("send_message", roomCode, message, playerName);
   };
 
+  const sendEmojiReaction = (emoji: string) => {
+    if (!socket || !emoji) return;
+
+    const reaction: EmojiReaction = {
+      id: `${Date.now()}-${Math.random()}`,
+      emoji,
+      playerName: decodeURIComponent(playerName),
+      timestamp: Date.now(),
+    };
+
+    socket.emit("send_emoji_reaction", roomCode, reaction);
+  };
+
+  const removeEmojiReaction = (id: string) => {
+    setEmojiReactions(prev => prev.filter(reaction => reaction.id !== id));
+  };
+
   return {
     gameState,
     players,
@@ -203,5 +234,8 @@ export const useOnlineGame = ({
     makeMove,
     setPlayerReady,
     sendChatMessage,
+    sendEmojiReaction,
+    removeEmojiReaction,
+    emojiReactions,
   };
 };

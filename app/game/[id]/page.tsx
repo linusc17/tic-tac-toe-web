@@ -7,6 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, RotateCcw, Trophy, HandHeart } from "lucide-react";
 import { GameSession, GameState } from "@/src/types/game";
 import { toast } from "sonner";
+import {
+  WinningLineOverlay,
+  AnimatedCell,
+  BoardContainer,
+} from "@/src/components/animations";
+import { checkWinnerWithLine, WinningLine } from "@/src/utils/gameUtils";
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
@@ -22,6 +28,7 @@ export default function GamePage({ params }: GamePageProps) {
     winner: null,
     isDraw: false,
   });
+  const [winningLine, setWinningLine] = useState<WinningLine | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
   const [player1IsX, setPlayer1IsX] = useState(true);
@@ -50,26 +57,6 @@ export default function GamePage({ params }: GamePageProps) {
     fetchGameSession();
   }, [fetchGameSession]);
 
-  const checkWinner = (board: (string | null)[]) => {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
-
-    for (const [a, b, c] of lines) {
-      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-        return board[a];
-      }
-    }
-    return null;
-  };
-
   const handleCellClick = (index: number) => {
     if (gameState.board[index] || gameState.winner || gameState.isDraw) {
       return;
@@ -78,8 +65,9 @@ export default function GamePage({ params }: GamePageProps) {
     const newBoard = [...gameState.board];
     newBoard[index] = gameState.currentPlayer;
 
-    const winner = checkWinner(newBoard);
-    const isDraw = !winner && newBoard.every((cell) => cell !== null);
+    const { winner, winningLine: newWinningLine } =
+      checkWinnerWithLine(newBoard);
+    const isDraw = !winner && newBoard.every(cell => cell !== null);
 
     setGameState({
       board: newBoard,
@@ -87,6 +75,8 @@ export default function GamePage({ params }: GamePageProps) {
       winner,
       isDraw,
     });
+
+    setWinningLine(newWinningLine);
 
     if (winner || isDraw) {
       setShowRoundEnd(true);
@@ -148,6 +138,7 @@ export default function GamePage({ params }: GamePageProps) {
         winner: null,
         isDraw: false,
       });
+      setWinningLine(null);
       setShowRoundEnd(false);
     } catch (error) {
       console.error("Error in handleContinue:", error);
@@ -167,15 +158,16 @@ export default function GamePage({ params }: GamePageProps) {
       winner: null,
       isDraw: false,
     });
+    setWinningLine(null);
     setShowRoundEnd(false);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="bg-background text-foreground flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading game...</p>
+          <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2"></div>
+          <p className="text-muted-foreground mt-4">Loading game...</p>
         </div>
       </div>
     );
@@ -202,28 +194,28 @@ export default function GamePage({ params }: GamePageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"
           onClick={() => router.push("/")}
           className="mb-8"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Button>
 
-        <div className="max-w-2xl mx-auto">
+        <div className="mx-auto max-w-2xl">
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-2xl text-center">
+              <CardTitle className="text-center text-2xl">
                 {gameSession.player1Name} vs {gameSession.player2Name}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 gap-4 text-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     {gameSession.player1Name} ({player1IsX ? "X" : "O"}) Wins
                   </p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -231,7 +223,7 @@ export default function GamePage({ params }: GamePageProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     {gameSession.player2Name} ({player1IsX ? "O" : "X"}) Wins
                   </p>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -239,13 +231,13 @@ export default function GamePage({ params }: GamePageProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Draws</p>
-                  <p className="text-2xl font-bold text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">Draws</p>
+                  <p className="text-muted-foreground text-2xl font-bold">
                     {gameSession.draws}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Rounds</p>
+                  <p className="text-muted-foreground text-sm">Rounds</p>
                   <p className="text-2xl font-bold">
                     {gameSession.totalRounds}
                   </p>
@@ -256,15 +248,15 @@ export default function GamePage({ params }: GamePageProps) {
 
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <div>
                   {gameState.winner ? (
-                    <p className="text-xl font-semibold text-green-600 flex items-center justify-center gap-2">
+                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-green-600">
                       <Trophy className="h-6 w-6" />
                       {getWinnerName()} Wins!
                     </p>
                   ) : gameState.isDraw ? (
-                    <p className="text-xl font-semibold text-yellow-600 flex items-center justify-center gap-2">
+                    <p className="flex items-center justify-center gap-2 text-xl font-semibold text-yellow-600">
                       <HandHeart className="h-6 w-6" />
                       It&apos;s a Draw!
                     </p>
@@ -287,23 +279,36 @@ export default function GamePage({ params }: GamePageProps) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2 max-w-sm mx-auto mb-8">
-                {gameState.board.map((cell, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleCellClick(index)}
-                    className="aspect-square bg-secondary hover:bg-secondary/80 rounded-lg flex items-center justify-center text-4xl font-bold transition-colors disabled:opacity-50"
-                    disabled={!!cell || !!gameState.winner || gameState.isDraw}
-                  >
-                    {cell}
-                  </button>
-                ))}
-              </div>
+              <BoardContainer
+                hasWinner={!!gameState.winner}
+                isDraw={gameState.isDraw}
+                className="mb-8"
+              >
+                <div className="relative mx-auto grid max-w-sm grid-cols-3 gap-2">
+                  {gameState.board.map((cell, index) => {
+                    const isWinning =
+                      winningLine?.positions.includes(index) || false;
+                    return (
+                      <AnimatedCell
+                        key={index}
+                        isWinning={isWinning}
+                        onClick={() => handleCellClick(index)}
+                        disabled={
+                          !!cell || !!gameState.winner || gameState.isDraw
+                        }
+                      >
+                        {cell}
+                      </AnimatedCell>
+                    );
+                  })}
+                  <WinningLineOverlay winningLine={winningLine} />
+                </div>
+              </BoardContainer>
 
               {showRoundEnd && (
-                <div className="text-center space-y-4 p-6 bg-secondary/50 rounded-lg">
+                <div className="bg-secondary/50 space-y-4 rounded-lg p-6 text-center">
                   <p className="text-lg font-medium">Round Complete!</p>
-                  <div className="flex gap-4 justify-center">
+                  <div className="flex justify-center gap-4">
                     <Button onClick={handleContinue} size="lg">
                       Continue Playing
                     </Button>
