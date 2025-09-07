@@ -26,19 +26,19 @@ export function Header() {
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-2 sm:py-4">
         <div className="flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
           >
-            <Gamepad2 className="text-primary h-8 w-8" />
-            <h1 className="font-['Poppins'] text-3xl font-black tracking-wide uppercase">
+            <Gamepad2 className="text-primary h-6 w-6 sm:h-8 sm:w-8" />
+            <h1 className="font-['Poppins'] text-lg font-black tracking-wide uppercase leading-none sm:text-3xl">
               TIC TAC TOE
             </h1>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden items-center gap-4 md:flex">
               <Button variant="ghost" asChild>
                 <Link href="/leaderboard" className="flex items-center gap-2">
@@ -85,11 +85,20 @@ export function Header() {
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="px-2 text-xs sm:px-3 sm:text-sm"
+                >
                   <Link href="/login">Login</Link>
                 </Button>
-                <Button size="sm" asChild>
+                <Button
+                  size="sm"
+                  asChild
+                  className="px-2 text-xs sm:px-3 sm:text-sm"
+                >
                   <Link href="/register">Sign Up</Link>
                 </Button>
               </div>
@@ -100,17 +109,17 @@ export function Header() {
         </div>
 
         {/* Mobile navigation */}
-        <nav className="mt-4 flex items-center gap-2 border-t pt-2 md:hidden">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/leaderboard" className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
+        <nav className="mt-2 flex items-center justify-center gap-2 border-t pt-2 md:hidden">
+          <Button variant="ghost" size="sm" asChild className="text-xs">
+            <Link href="/leaderboard" className="flex items-center gap-1">
+              <Trophy className="h-3 w-3" />
               Leaderboard
             </Link>
           </Button>
 
           {user && (
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground text-xs">
                 {user.wins}W•{user.losses}L
               </span>
             </div>
