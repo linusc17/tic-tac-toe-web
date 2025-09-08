@@ -6,6 +6,7 @@ import { ReactNode } from "react";
 interface AnimatedCellProps {
   children: ReactNode;
   isWinning?: boolean;
+  isComputerMove?: boolean;
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
@@ -14,6 +15,7 @@ interface AnimatedCellProps {
 export const AnimatedCell = ({
   children,
   isWinning = false,
+  isComputerMove = false,
   onClick,
   disabled = false,
   className = "",
@@ -25,7 +27,9 @@ export const AnimatedCell = ({
       className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-lg text-4xl font-bold transition-all duration-300 disabled:opacity-50 ${
         isWinning
           ? "border-2 border-green-400 bg-green-500/30 hover:bg-green-500/40"
-          : "bg-secondary hover:bg-secondary/80"
+          : isComputerMove
+            ? "border-2 border-blue-400 bg-blue-500/30 hover:bg-blue-500/40"
+            : "bg-secondary hover:bg-secondary/80"
       } ${className} `}
       whileHover={!disabled ? { scale: 1.05 } : {}}
       whileTap={!disabled ? { scale: 0.95 } : {}}
@@ -34,9 +38,14 @@ export const AnimatedCell = ({
           ? {
               scale: [1, 1.1, 1],
             }
-          : {
-              scale: 1,
-            }
+          : isComputerMove
+            ? {
+                scale: [1, 1.05, 1],
+                borderColor: ["#60A5FA", "#3B82F6", "#60A5FA"],
+              }
+            : {
+                scale: 1,
+              }
       }
       transition={
         isWinning
@@ -47,11 +56,18 @@ export const AnimatedCell = ({
               delay: 1.2,
               ease: "easeInOut",
             }
-          : {
-              type: "spring",
-              stiffness: 300,
-              damping: 20,
-            }
+          : isComputerMove
+            ? {
+                duration: 1.5,
+                repeat: 2,
+                repeatType: "loop",
+                ease: "easeInOut",
+              }
+            : {
+                type: "spring",
+                stiffness: 300,
+                damping: 20,
+              }
       }
     >
       <motion.div

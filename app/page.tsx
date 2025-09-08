@@ -14,10 +14,15 @@ export default function Home() {
     router.push("/online");
   };
 
+  const handleStartComputerGame = () => {
+    router.push("/ai-game");
+  };
+
   return (
     <HomePage
       onStartNewGame={handleStartNewGame}
       onStartOnline={handleStartOnline}
+      onStartComputerGame={handleStartComputerGame}
     />
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { GameSession } from "@/src/types/game";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGlobalServerState } from "@/src/hooks/useGlobalServerState";
@@ -30,9 +32,14 @@ interface PaginationInfo {
 interface HomePageProps {
   onStartNewGame: () => void;
   onStartOnline: () => void;
+  onStartComputerGame: () => void;
 }
 
-export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
+export function HomePage({
+  onStartNewGame,
+  onStartOnline,
+  onStartComputerGame,
+}: HomePageProps) {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSplitButtons, setShowSplitButtons] = useState(false);
@@ -139,35 +146,69 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
                 PLAY
               </Button>
             ) : (
-              <div className="animate-in fade-in flex gap-6 duration-500">
-                <Button
-                  onClick={onStartNewGame}
-                  size="lg"
-                  className="animate-in slide-in-from-right-20 translate-x-0 transform gap-2 px-8 py-4 font-['Poppins'] text-xl font-bold tracking-wide shadow-lg transition-all duration-300"
-                  style={{
-                    animationDelay: "100ms",
-                    animationDuration: "600ms",
-                    animationFillMode: "both",
+              <motion.div 
+                className="flex flex-col gap-4 sm:flex-row sm:gap-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <motion.div
+                  initial={{ x: 50, opacity: 0, scale: 0.8 }}
+                  animate={{ x: 0, opacity: 1, scale: 1 }}
+                  transition={{ 
+                    delay: 0.1, 
+                    duration: 0.6, 
+                    ease: [0.25, 0.46, 0.45, 0.94] 
                   }}
                 >
-                  <Play className="h-6 w-6" />
-                  Local Game
-                </Button>
-                <Button
-                  onClick={onStartOnline}
-                  size="lg"
-                  variant="outline"
-                  className="animate-in slide-in-from-left-20 translate-x-0 transform gap-2 px-8 py-4 font-['Poppins'] text-xl font-bold tracking-wide shadow-lg transition-all duration-300"
-                  style={{
-                    animationDelay: "100ms",
-                    animationDuration: "600ms",
-                    animationFillMode: "both",
+                  <Button
+                    onClick={onStartNewGame}
+                    size="lg"
+                    className="w-full gap-2 px-6 py-4 font-['Poppins'] text-lg font-bold tracking-wide shadow-lg transition-all duration-300 hover:scale-105 sm:text-xl"
+                  >
+                    <Play className="h-5 w-5 sm:h-6 sm:w-6" />
+                    Local Game
+                  </Button>
+                </motion.div>
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.9 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  transition={{ 
+                    delay: 0.2, 
+                    duration: 0.6, 
+                    ease: [0.25, 0.46, 0.45, 0.94] 
                   }}
                 >
-                  <Gamepad2 className="h-6 w-6" />
-                  Online Game
-                </Button>
-              </div>
+                  <Button
+                    onClick={onStartComputerGame}
+                    size="lg"
+                    variant="secondary"
+                    className="w-full gap-2 px-6 py-4 font-['Poppins'] text-lg font-bold tracking-wide shadow-lg transition-all duration-300 hover:scale-105 sm:text-xl"
+                  >
+                    <Bot className="h-5 w-5 sm:h-6 sm:w-6" />
+                    vs Computer
+                  </Button>
+                </motion.div>
+                <motion.div
+                  initial={{ x: -50, opacity: 0, scale: 0.8 }}
+                  animate={{ x: 0, opacity: 1, scale: 1 }}
+                  transition={{ 
+                    delay: 0.3, 
+                    duration: 0.6, 
+                    ease: [0.25, 0.46, 0.45, 0.94] 
+                  }}
+                >
+                  <Button
+                    onClick={onStartOnline}
+                    size="lg"
+                    variant="outline"
+                    className="w-full gap-2 px-6 py-4 font-['Poppins'] text-lg font-bold tracking-wide shadow-lg transition-all duration-300 hover:scale-105 sm:text-xl"
+                  >
+                    <Gamepad2 className="h-5 w-5 sm:h-6 sm:w-6" />
+                    Online Game
+                  </Button>
+                </motion.div>
+              </motion.div>
             )}
           </div>
         </div>
@@ -196,87 +237,90 @@ export function HomePage({ onStartNewGame, onStartOnline }: HomePageProps) {
                   : "Loading game sessions..."}
               </p>
             </div>
-          ) : gameSessions.length === 0 ? (
+          ) : gameSessions.filter(session => session.totalRounds > 0).length ===
+            0 ? (
             <Card className="py-12 text-center">
               <CardContent className="py-8">
                 <p className="text-muted-foreground text-lg">
-                  No game sessions yet. Start your first game!
+                  No completed games yet. Start your first game!
                 </p>
               </CardContent>
             </Card>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {gameSessions.map(session => (
-                  <Card
-                    key={session.id}
-                    className="transition-shadow hover:shadow-md"
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1">
-                              {session.player1Name}
-                              {session.player1Id && (
-                                <CheckCircle className="h-4 w-4 text-blue-500" />
-                              )}
-                            </span>
-                            <span>vs</span>
-                            <span className="flex items-center gap-1">
-                              {session.player2Name}
-                              {session.player2Id && (
-                                <CheckCircle className="h-4 w-4 text-blue-500" />
-                              )}
-                            </span>
-                          </div>
-                        </CardTitle>
-                        <span className="text-muted-foreground text-sm">
-                          {formatDate(session.createdAt)}
-                        </span>
-                      </div>
-                    </CardHeader>
+                {gameSessions
+                  .filter(session => session.totalRounds > 0)
+                  .map(session => (
+                    <Card
+                      key={session.id}
+                      className="transition-shadow hover:shadow-md"
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg">
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                {session.player1Name}
+                                {session.player1Id && (
+                                  <CheckCircle className="h-4 w-4 text-blue-500" />
+                                )}
+                              </span>
+                              <span>vs</span>
+                              <span className="flex items-center gap-1">
+                                {session.player2Name}
+                                {session.player2Id && (
+                                  <CheckCircle className="h-4 w-4 text-blue-500" />
+                                )}
+                              </span>
+                            </div>
+                          </CardTitle>
+                          <span className="text-muted-foreground text-sm">
+                            {formatDate(session.createdAt)}
+                          </span>
+                        </div>
+                      </CardHeader>
 
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-1">
-                          {session.player1Name}
-                          {session.player1Id && (
-                            <CheckCircle className="h-3 w-3 text-blue-500" />
-                          )}
-                          <span className="ml-1">Wins:</span>
-                        </span>
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                          {session.player1Wins}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-1">
-                          {session.player2Name}
-                          {session.player2Id && (
-                            <CheckCircle className="h-3 w-3 text-blue-500" />
-                          )}
-                          <span className="ml-1">Wins:</span>
-                        </span>
-                        <span className="font-medium text-blue-600 dark:text-blue-400">
-                          {session.player2Wins}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Draws:</span>
-                        <span className="text-muted-foreground font-medium">
-                          {session.draws}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span>Total Rounds:</span>
-                        <span className="font-medium">
-                          {session.totalRounds}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="flex items-center gap-1">
+                            {session.player1Name}
+                            {session.player1Id && (
+                              <CheckCircle className="h-3 w-3 text-blue-500" />
+                            )}
+                            <span className="ml-1">Wins:</span>
+                          </span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                            {session.player1Wins}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="flex items-center gap-1">
+                            {session.player2Name}
+                            {session.player2Id && (
+                              <CheckCircle className="h-3 w-3 text-blue-500" />
+                            )}
+                            <span className="ml-1">Wins:</span>
+                          </span>
+                          <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {session.player2Wins}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Draws:</span>
+                          <span className="text-muted-foreground font-medium">
+                            {session.draws}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span>Total Rounds:</span>
+                          <span className="font-medium">
+                            {session.totalRounds}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
 
               {/* Pagination Controls */}

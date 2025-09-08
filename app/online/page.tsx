@@ -166,6 +166,9 @@ export default function OnlinePage() {
                   value={playerName}
                   onChange={e => setPlayerName(e.target.value)}
                   maxLength={50}
+                  disabled={!!user}
+                  readOnly={!!user}
+                  className={user ? "cursor-not-allowed opacity-60" : ""}
                 />
                 {user && (
                   <p className="text-muted-foreground text-xs">
